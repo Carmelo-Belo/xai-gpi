@@ -13,6 +13,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
+import os
 
 
 
@@ -91,6 +92,7 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
     ## Perform the cluster only on the train years
     # Data preprocessing
     # from clustering import filter_xarray
+
     ## CHECK BETTER FILTERING PROCESS WHEN WORKING BASIN WISE ##
     # Data is filtered based on the geographical limits, months, resolution and years
     # data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon, months=months,resolution=resolution)
@@ -124,7 +126,6 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
     cluster.kmeans()
     # cluster.agclustering()
 
-
     # Get the closest node to the cluster center
     centroids = cluster_model.get_closest2center2(cluster, data_res_masked)
 
@@ -142,48 +143,34 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
     lons_c = [np.array(nodes_list)[centroids][i][1] for i in range(len(np.array(nodes_list)[centroids]))]
     lats_c = [np.array(nodes_list)[centroids][i][0] for i in range(len(np.array(nodes_list)[centroids]))]
 
-    if first_year_test != None:
-
-        # Once the cluster are created, read and process the test data
-
-        data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon, months=months, resolution=resolution)
-
-        # Apply seasonal forecasting
-
-        if seasonal_soothing == True:
-            data_filtered_test = seasonal_smoothing(data_filtered_clima, variable, data_filtered_test)
+    # Once the cluster are created, read and process the test data
+    ## LOOK BETTER AT FILTERING WHEN PERFORMING THE BASIN WISE ANALYSIS ## 
+    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon, months=months, resolution=resolution)
+    
+    # Apply seasonal forecasting
+    ## SEASONAL SMOOTHING IS DONE ON DAYS OF YEAR, NOT ON MONTHS ##
+    # if seasonal_soothing == True:
+    #     data_filtered_test = seasonal_smoothing(data_filtered_clima, variable, data_filtered_test)
         
     # Merge the train and test data
-
-    if first_year_test != None:
-        data_filtered_total = xr.concat([data_filtered, data_filtered_test], dim='time')
-        data_filtered_test.close()
-    else:
-        data_filtered_total = data_filtered
-    data_filtered.close()
-
+    # data_filtered_total = xr.concat([data_filtered, data_filtered_test], dim='time')
+    ## FOR NOW THERE IS NO FILTERING OF THE DATA, SO data_filtered_total = total_data ##
+    data_filtered_total = total_data
 
     # Create a dataframe with the centroids timeseries
-
     centroids_data = []
     for i in range(len(centroids)):
-        centroid_data = data_filtered_total.sel(latitude=lats_c[i], longitude=lons_c[i])[variable].values
+        centroid_data = data_filtered_total.sel(latitude=lats_c[i], longitude=lons_c[i]).values
         centroids_data.append(centroid_data)
-
     centroids_dataframe = pd.DataFrame(centroids_data).T
     centroids_dataframe.index = data_filtered_total.time.values
-    centroids_dataframe.columns = [var+coord+'_cluster'+str(i) for i in range(1, n_clusters+1)]
-
+    centroids_dataframe.columns = [var + basin + '_cluster' + str(i) for i in range(1, n_clusters+1)]
 
     # Get average data for each cluster, weighted averages are calculated. Batch size is adjusted to avoid memory errors
-
-    data_cl_av = data_filtered_total[variable].values
-
-    clusters_av_dataframe = pd.DataFrame(columns=[var+coord+'_cluster'+str(i) for i in range(1, n_clusters+1)])
-
+    clusters_av_dataframe = pd.DataFrame(columns=[var + basin + '_cluster' + str(i) for i in range(1, n_clusters+1)])
     weights = np.cos(np.deg2rad(nodes_list[:,0]))
+    data_cluster_avg = data_filtered_total.values
 
-    # data_filtered_total.close()
     def weighted_average(data, weights):
         weighted_sum = np.dot(weights, data)
         total_weight = np.sum(weights)
@@ -194,43 +181,37 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
         result = np.zeros((data.shape[1],))
         
         for i in range(0, num_rows, batch_size):
-            if i==190000:
-                batch_size=878
-            batch_data = data[i:i+batch_size]
-            batch_weights = weights[i:i+batch_size]
+            if i + batch_size > num_rows:
+                batch_data = data[i:]
+                batch_weights = weights[i:]
+            else:
+                batch_data = data[i:i+batch_size]
+                batch_weights = weights[i:i+batch_size]
             result += weighted_average(batch_data, batch_weights)
-        
-        return result / (num_rows / batch_size)
+            
+        return result / (num_rows/batch_size)
 
-    for i in range(len(centroids)):
-        # cluster_data = data_cl_av_masked[cluster.labels==i]
-        cluster_mask = cluster.labels==i
-        if var == 'sst' or var=='sic' or var=='sm1' or var=='t2m':
-            data_cl_av_masked = data_cl_av.reshape(data_cl_av.shape[0], data_cl_av.shape[1]*data_cl_av.shape[2]).T[mask][cluster_mask]
-            batch_size = 1000  
-            cluster_average = calculate_weighted_average(data_cl_av_masked, weights[cluster_mask], batch_size)
-        else:
-            mask_cl = mask & cluster_mask
-            data_cl_av_masked = data_cl_av.reshape(data_cl_av.shape[0], data_cl_av.shape[1]*data_cl_av.shape[2]).T[mask_cl]
-            batch_size = 1000  
-            cluster_average = calculate_weighted_average(data_cl_av_masked, weights[cluster_mask], batch_size)    
-        # cluster_average = np.average(data_cl_av_masked, weights=weights[cluster_mask],axis=0)
-        clusters_av_dataframe[var+coord+'_cluster'+str(i+1)] = cluster_average
+    for c in range(len(centroids)):
+        cluster_mask = cluster.labels == c
+        batch_size = 100
+        data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
+        weights_masked = weights[cluster_mask]
+        cluster_avg = calculate_weighted_average(data_cluster_avg_masked, weights_masked, batch_size)
+        clusters_av_dataframe[var + basin + '_cluster' + str(c+1)] = cluster_avg
 
     clusters_av_dataframe.index = data_filtered_total.time.values
 
     # Create a dataframe with the cluster labels
-
     labels_dataframe = pd.DataFrame(cluster.labels, columns=['cluster'])
     labels_dataframe['nodes_lat'] = np.array(nodes_list)[:,0]
     labels_dataframe['nodes_lon'] = np.array(nodes_list)[:,1]
-    labels_dataframe['cluster'] = labels_dataframe['cluster']+1
+    labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
 
     # Save the data
 
-    centroids_dataframe.to_csv( path_output+ 'centroids'+var+coord+str(n_clusters)+'.csv')
-    clusters_av_dataframe.to_csv( path_output+ 'averages'+var+coord+str(n_clusters)+'.csv')
-    labels_dataframe.to_csv( path_output+ 'labels'+var+coord+str(n_clusters)+'.csv')
+    centroids_dataframe.to_csv(os.path.join(path_output, 'centroids_' + var + basin + str(n_clusters) + '.csv'))
+    clusters_av_dataframe.to_csv(os.path.join(path_output, 'averages_' + var + basin + str(n_clusters) + '.csv'))
+    labels_dataframe.to_csv(os.path.join(path_output, 'labels_' + var + basin + str(n_clusters) + '.csv'))
 
     return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
 
