@@ -53,7 +53,7 @@ def seasonal_smoothing(data_filtered_clima, variable, data_filtered):
 
     return data_filtered
 
-def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, train_yearI, train_yearF, test_yearI, test_yearF,
+def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soothing, train_yearI, train_yearF, test_yearI, test_yearF,
                        resolution, path_predictor, path_output):
 
     # Define geographical coordinates according to the basin considered
@@ -87,7 +87,20 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
             test_data = xr.open_dataset(path)[var]
         else:
             test_data = xr.concat([test_data, xr.open_dataset(path)[var]], dim='time')
+    # If variable is defined on pressure levels, select the level specified in the inputs
+    if (level != None) and (type(level) == int):
+        train_data = train_data.sel(level=level)
+        test_data = test_data.sel(level=level)
+        var_name = train_data.long_name + ' at ' + str(level) + ' hPa'
+    # If variable is defined between the difference of two pressure levels, select the difference level specified in the inputs
+    elif (level != None) and (type(level) == str):
+        train_data = train_data.sel(diff_level=level)
+        test_data = test_data.sel(diff_level=level)
+        var_name = train_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'
+    else:
+        var_name = train_data.long_name
     total_data = xr.concat([train_data, test_data], dim='time')
+    var_name = total_data.long_name
 
     ## Perform the cluster only on the train years
     # Data preprocessing
@@ -133,7 +146,7 @@ def perform_clustering(var, months, basin, n_clusters, norm, seasonal_soothing, 
     latitudes = train_data.latitude.values
     longitudes = train_data.longitude.values
 
-    cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask)
+    cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask, var_name)
 
     # Get the data for the centroids 
     iter = itertools.product(latitudes, longitudes)
@@ -434,7 +447,7 @@ class cluster_model:
             mean_clusters[i] = np.mean(self.data[self.labels==i], axis=0)
         return mean_clusters
 
-    def plot_clusters(cluster, data, latitudes, longitudes, mask, basin='GLB'):
+    def plot_clusters(cluster, data, latitudes, longitudes, mask, title, basin='GLB'):
         ## FOR NOW ONLY PLOT ON GLOBAL MAP, NEED TO ADAPT FOR BASIN WISE PLOTTING -> mask and basin##
         north, south = latitudes[0], latitudes[-1]
         west, east = longitudes[0], longitudes[-1]
@@ -479,6 +492,6 @@ class cluster_model:
         lats_c = [np.array(nodes_list)[centroids][i][0] for i in range(len(np.array(nodes_list)[centroids]))]
         ax.scatter(lons_c, lats_c, marker='x', linewidth=4, s=500, color='black', transform=ccrs.PlateCarree()) 
         
-        ax.set_title(cluster.name, fontsize=30)
+        ax.set_title(title, fontsize=30)
         plt.tight_layout()
         plt.show()
