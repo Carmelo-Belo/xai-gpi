@@ -1,13 +1,11 @@
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.preprocessing import normalize
 import itertools
 import xarray as xr
 import numpy as np
-from numpy.lib.stride_tricks import sliding_window_view
 import pandas as pd
-import datetime
 from matplotlib import pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -137,7 +135,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
 
     # Perform the clustering
-    from FS_TCG.clustering.clustering import cluster_model
+    from clustering import cluster_model
     cluster = cluster_model(data_res_masked, n_clusters, var)
     cluster.check_data()
     cluster.kmeans()
@@ -210,7 +208,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     for c in range(len(centroids)):
         cluster_mask = cluster.labels == c
         batch_size = 100
-        data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
+        data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
         weights_masked = weights[cluster_mask]
         cluster_avg = calculate_weighted_average(data_cluster_avg_masked, weights_masked, batch_size)
         clusters_av_dataframe[var + basin + '_cluster' + str(c+1)] = cluster_avg
