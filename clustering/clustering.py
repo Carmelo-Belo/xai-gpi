@@ -128,7 +128,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         ocean_mask = None
     ## MASKING ONLY FOR OCEAN VARIABLES, NEED TO CHECK IF NECESSARY FOR OTHER VARIABLES, OR WHEN WORKING BASIN WISE ##
     mask = ocean_mask
-    data_res_masked = data_res[mask]
+    if mask is None:
+        data_res_masked = data_res
+    else:
+        data_res_masked = data_res[mask]
 
     # Normalize each time series
     if norm==True:
@@ -152,7 +155,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     # Get the data for the centroids 
     iter = itertools.product(latitudes, longitudes)
     nodes_list = list(iter)
-    nodes_list = np.array(nodes_list)[mask]
+    if mask is None:
+        nodes_list = np.array(nodes_list)
+    else:
+        nodes_list = np.array(nodes_list)[mask]
 
     lons_c = [np.array(nodes_list)[centroids][i][1] for i in range(len(np.array(nodes_list)[centroids]))]
     lats_c = [np.array(nodes_list)[centroids][i][0] for i in range(len(np.array(nodes_list)[centroids]))]
@@ -208,7 +214,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     for c in range(len(centroids)):
         cluster_mask = cluster.labels == c
         batch_size = 100
-        data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
+        if mask is None:
+            data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
+        else:
+            data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
         weights_masked = weights[cluster_mask]
         cluster_avg = calculate_weighted_average(data_cluster_avg_masked, weights_masked, batch_size)
         clusters_av_dataframe[var + basin + '_cluster' + str(c+1)] = cluster_avg
@@ -472,7 +481,10 @@ class cluster_model:
         
         # Get data for the plot and plot the clusters
         iter = itertools.product(latitudes, longitudes)
-        nodes_list = np.array(list(iter))[mask]
+        if mask is None:
+            nodes_list = np.array(list(iter))
+        else:
+            nodes_list = np.array(list(iter))[mask]
         lons = np.array([nodes_list[i][1] for i in range(len(nodes_list))])
         lats = np.array([nodes_list[i][0] for i in range(len(nodes_list))])
         n_clusters = len(np.unique(cluster.labels))
