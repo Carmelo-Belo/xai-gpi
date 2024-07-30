@@ -92,15 +92,16 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         train_data = train_data.sel(level=level)
         test_data = test_data.sel(level=level)
         var_name = train_data.long_name + ' at ' + str(level) + ' hPa'
+        var = var + str(level)
     # If variable is defined between the difference of two pressure levels, select the difference level specified in the inputs
     elif (level != None) and (type(level) == str):
         train_data = train_data.sel(diff_level=level)
         test_data = test_data.sel(diff_level=level)
         var_name = train_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'
+        var = var + level
     else:
         var_name = train_data.long_name
     total_data = xr.concat([train_data, test_data], dim='time')
-    var_name = total_data.long_name
 
     ## Perform the cluster only on the train years
     # Data preprocessing
@@ -121,19 +122,22 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     data = train_data.values
     data_res = data.reshape(data.shape[0], data.shape[1]*data.shape[2]).T
 
-    # Mask the data if there are missing values or if the in a sub-basin
-    if basin == 'GLB':
-        data_res_masked = data_res
+    # Mask the data if is a variable defined over the ocean
+    ocean_vars = ['sst', 'ssta20', 'ssta30', 'mpi']
+    if var in ocean_vars:
+        ocean_mask = ~np.any(np.isnan(data_res), axis=1)
     else:
-        a = 0
-        ## NEED TO COMPUTE EVENTUAL MASKING ##
-    mask = None
+        ocean_mask = None
+    ## MASKING ONLY FOR OCEAN VARIABLES, NEED TO CHECK IF NECESSARY FOR OTHER VARIABLES, OR WHEN WORKING BASIN WISE ##
+    mask = ocean_mask
+    data_res_masked = data_res[mask]
+
     # Normalize each time series
     if norm==True:
         data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
 
     # Perform the clustering
-    from clustering import cluster_model
+    from FS_TCG.clustering.clustering import cluster_model
     cluster = cluster_model(data_res_masked, n_clusters, var)
     cluster.check_data()
     cluster.kmeans()
@@ -145,7 +149,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     # Plot the clusters
     latitudes = train_data.latitude.values
     longitudes = train_data.longitude.values
-
     cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask, var_name)
 
     # Get the data for the centroids 
@@ -221,7 +224,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
 
     # Save the data
-
     centroids_dataframe.to_csv(os.path.join(path_output, 'centroids_' + var + basin + str(n_clusters) + '.csv'))
     clusters_av_dataframe.to_csv(os.path.join(path_output, 'averages_' + var + basin + str(n_clusters) + '.csv'))
     labels_dataframe.to_csv(os.path.join(path_output, 'labels_' + var + basin + str(n_clusters) + '.csv'))
@@ -249,7 +251,7 @@ def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,l
 
     variable = var  
     # Data preprocessing
-    from clustering import filter_xarray
+    from FS_TCG.clustering.clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -258,7 +260,7 @@ def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,l
 
     # Perform the seasonal soothing
     
-    from clustering import seasonal_smoothing
+    from FS_TCG.clustering.clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
@@ -311,7 +313,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     variable = var  
     # Data preprocessing
-    from clustering import filter_xarray
+    from FS_TCG.clustering.clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -320,7 +322,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     # Perform the seasonal soothing
     
-    from clustering import seasonal_smoothing
+    from FS_TCG.clustering.clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
@@ -350,7 +352,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     variable = var  
     # Data preprocessing
-    from clustering import filter_xarray
+    from FS_TCG.clustering.clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -359,7 +361,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     # Perform the seasonal soothing
     
-    from clustering import seasonal_smoothing
+    from FS_TCG.clustering.clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
@@ -432,7 +434,7 @@ class cluster_model:
     def get_closest2center2(self, data):
         index = [np.argmin(np.linalg.norm(data[self.labels==i] - self.cluster_centers[i], ord=2, axis=1)) for i in range(self.cluster_centers.shape[0])]
         absolute_indexes = [np.where(self.labels == i)[0][closest_index] for i, closest_index in enumerate(index)]
-        print('Index of the closest cluster center for each sample', absolute_indexes)
+        # print('Index of the closest cluster center for each sample', absolute_indexes)
         return absolute_indexes
     
     def get_closest2center(data, cluster_centers, labels):
@@ -472,7 +474,7 @@ class cluster_model:
         
         # Get data for the plot and plot the clusters
         iter = itertools.product(latitudes, longitudes)
-        nodes_list = np.array(list(iter))
+        nodes_list = np.array(list(iter))[mask]
         lons = np.array([nodes_list[i][1] for i in range(len(nodes_list))])
         lats = np.array([nodes_list[i][0] for i in range(len(nodes_list))])
         n_clusters = len(np.unique(cluster.labels))
@@ -486,11 +488,14 @@ class cluster_model:
         cbar.ax.tick_params(labelsize=22)
         cbar.set_label('Cluster',fontsize=26)
         
-        # Plot the centroids
+        # Plot the centroids witht the Cross symbol and number of the cluster next to it
         centroids = cluster_model.get_closest2center2(cluster, data)
-        lons_c = [np.array(nodes_list)[centroids][i][1] for i in range(len(np.array(nodes_list)[centroids]))]
-        lats_c = [np.array(nodes_list)[centroids][i][0] for i in range(len(np.array(nodes_list)[centroids]))]
-        ax.scatter(lons_c, lats_c, marker='x', linewidth=4, s=500, color='black', transform=ccrs.PlateCarree()) 
+        for c, centroid in enumerate(centroids):
+            lon_c = nodes_list[centroid][1]
+            lat_c = nodes_list[centroid][0]
+            ax.scatter(lon_c, lat_c, marker='x', linewidth=4, s=500, color='black', transform=ccrs.PlateCarree())
+            ax.text(lon_c+2.5, lat_c, str(c+1), fontsize=20, color='black', transform=ccrs.PlateCarree(),
+                    ha='left', va='top')
         
         ax.set_title(title, fontsize=30)
         plt.tight_layout()
