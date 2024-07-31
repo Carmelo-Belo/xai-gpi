@@ -86,13 +86,14 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         else:
             test_data = xr.concat([test_data, xr.open_dataset(path)[var]], dim='time')
     # If variable is defined on pressure levels, select the level specified in the inputs
-    if (level != None) and (type(level) == int):
+    if (level != 'sfc') and (len(level) < 5):
+        level = int(level)
         train_data = train_data.sel(level=level)
         test_data = test_data.sel(level=level)
         var_name = train_data.long_name + ' at ' + str(level) + ' hPa'
         var = var + str(level)
     # If variable is defined between the difference of two pressure levels, select the difference level specified in the inputs
-    elif (level != None) and (type(level) == str):
+    elif (level != 'sfc') and (len(level) > 4):
         train_data = train_data.sel(diff_level=level)
         test_data = test_data.sel(diff_level=level)
         var_name = train_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'

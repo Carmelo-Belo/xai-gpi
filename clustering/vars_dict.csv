@@ -1,9 +1,9 @@
 var,dataset,vars_group,level
-msl,ERA5,MSLP-SST,
-sst,ERA5,MSLP-SST,
-ssta20,ERA5dv,SSTA,
-ssta30,ERA5dv,SSTA,
-mpi,ERA5dv,MPI,
+msl,ERA5,MSLP-SST,sfc
+sst,ERA5,MSLP-SST,sfc
+ssta20,ERA5dv,SSTA,sfc
+ssta30,ERA5dv,SSTA,sfc
+mpi,ERA5dv,MPI,sfc
 r,ERA5,RH,1000
 r,ERA5,RH,900
 r,ERA5,RH,850
@@ -66,4 +66,4 @@ zgv,ERA5dv,GUV,500
 zgv,ERA5dv,GUV,250
 zgv,ERA5dv,GUV,200
 zgv,ERA5dv,GUV,50
-w,ERA5,W,
+w,ERA5,W,sfc

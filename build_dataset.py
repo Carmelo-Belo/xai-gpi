@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 
 def check_consecutive_repeats(df,col):
     repeats = df.shift(1) == df
@@ -8,10 +9,6 @@ def check_consecutive_repeats(df,col):
         print(repeats[repeats].index)
 
 def build_dataset(local_variables, cluster_variables, index_variables, day_oy_year, path, first_year, last_year,file_name):
-    import pandas as pd
-    import numpy as np
-    import os
-
     # Create the dataset
 
     dataset = pd.DataFrame()
