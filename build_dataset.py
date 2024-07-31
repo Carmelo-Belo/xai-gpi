@@ -8,40 +8,38 @@ def check_consecutive_repeats(df,col):
         print('Consecutive values repeated found at',col)
         print(repeats[repeats].index)
 
-def build_dataset(local_variables, cluster_variables, index_variables, day_oy_year, path, first_year, last_year,file_name):
-    # Create the dataset
-
-    dataset = pd.DataFrame()
-
-    dataset.index = pd.date_range(start = str(first_year)+'-01-01', end = str(last_year)+'-12-31', freq = 'D')
-
-    # Load the cluster data
-
-    if cluster_variables != None:
-        files = os.listdir(path)
-        files = [f for f in files if f.startswith(cluster_variables)]
-        for file in files:
-            data = pd.read_csv(path+file, index_col = 0, parse_dates = True)
-            dataset = pd.concat([dataset, data], axis = 1)
-
-    # Load the local data
-    if local_variables != None:
-        data = pd.read_csv(path+local_variables, index_col = 0, parse_dates = True)
-        data.columns = ['local_'+col for col in data.columns]
-        dataset = pd.concat([dataset, data], axis = 1)
-
-    # Load the index data
-    if index_variables != None:
-        for file in index_variables:
-            data = pd.read_csv(path+file, index_col = 0, parse_dates = True)
-            dataset = pd.concat([dataset, data], axis = 1)
+def build_dataset(cluster_variables, index_variables, cluster_path, indexes_path, first_year, last_year, save_path, month_col=False):
     
-    # Add the day of the year
-    if day_oy_year:
-        dataset['day_of_year'] = dataset.index.dayofyear
+    # Create a dataframe containing the data for the climate indeces
+    date_range = pd.date_range(start=f'{first_year}-01-01', end=f'{last_year}-12-01', freq='MS')
+    df_indeces = pd.DataFrame(index=date_range, columns=index_variables)
+    for climate_index in index_variables:
+        filename = os.path.join(indexes_path, climate_index + '.txt')
+        data = pd.read_table(filename, sep='\s+', header=None)
+        for r, row in enumerate(df_indeces.iterrows()):
+            idx = df_indeces.index[r]
+            month = idx.month
+            year = idx.year
+            df_indeces.loc[idx, climate_index] = data[(data[0] == year)][month].values[0]
 
+    # Load the cluster data and merge it in a single dataframe
+    n_clusters = int(cluster_path[-10:-8])
+    for v, var in enumerate(cluster_variables):
+        filename = f'averages_{var}GLB{n_clusters}.csv'
+        path = os.path.join(cluster_path, filename)
+        if v == 0:
+            dataset_cluster = pd.read_csv(path, index_col=0, parse_dates=True)
+        else:
+            dataset_cluster = pd.concat([dataset_cluster, pd.read_csv(path, index_col=0, parse_dates=True)], axis=1)
+
+    # Merge the cluster and index dataframes
+    dataset = pd.concat([dataset_cluster, df_indeces], axis=1)
+
+    # Add a column containing the month of the year
+    if month_col:
+        dataset['month'] = dataset.index.month
+    
     # Check if any data is missing, repeated in consecutive days, or is above the average+7*std
-
     for col in dataset.columns:
         if dataset[col].isnull().sum() > 0:
             print('Warning: Missing values in', col)
@@ -52,8 +50,10 @@ def build_dataset(local_variables, cluster_variables, index_variables, day_oy_ye
             print('Warning: Values above the average+7*std in', col)
 
     # Save data in csv file
-
-    dataset.to_csv(path+file_name+'.csv')
-    
+    if month_col:
+        dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(index_variables)}idxs_month.csv'
+    else:
+        dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(index_variables)}idxs.csv'
+    dataset.to_csv(os.path.join(save_path, dataset_filename))
 
     return dataset
