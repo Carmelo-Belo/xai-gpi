@@ -100,6 +100,13 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         var = var + level
     else:
         var_name = train_data.long_name
+    # Convert the data of some variables to the desired units
+    if (var == 'sst'): # Convert from K to C
+        train_data = train_data + 273.15
+        test_data = test_data + 273.15
+    elif var == 'mslp': # Convert from Pa to hPa
+        train_data = train_data / 100
+        test_data = test_data / 100
     total_data = xr.concat([train_data, test_data], dim='time')
 
     ## Perform the cluster only on the train years
