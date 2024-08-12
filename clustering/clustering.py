@@ -71,43 +71,34 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         min_lon, max_lon, min_lat, max_lat = -181, 181, -40, 40
     else:
         raise ValueError('Basin not recognized')
-
+    
     # Data extraction from .nc files
-    for y, year in enumerate(range(train_yearI, train_yearF+1)):
+    for y, year in enumerate(range(1965, 2023)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
-            train_data = xr.open_dataset(path)[var]
+            total_data = xr.open_dataset(path)[var]
         else:
-            train_data = xr.concat([train_data, xr.open_dataset(path)[var]], dim='time')
-    for y, year in enumerate(range(test_yearI, test_yearF+1)):
-        path = path_predictor + f'_{resolution}_{year}.nc'
-        if y == 0:
-            test_data = xr.open_dataset(path)[var]
-        else:
-            test_data = xr.concat([test_data, xr.open_dataset(path)[var]], dim='time')
+            total_data = xr.concat([total_data, xr.open_dataset(path)[var]], dim='time')
     # If variable is defined on pressure levels, select the level specified in the inputs
     if (level != 'sfc') and (len(level) < 5):
         level = int(level)
-        train_data = train_data.sel(level=level)
-        test_data = test_data.sel(level=level)
-        var_name = train_data.long_name + ' at ' + str(level) + ' hPa'
+        total_data = total_data.sel(level=level)
+        var_name = total_data.long_name + ' at ' + str(level) + ' hPa'
         var = var + str(level)
     # If variable is defined between the difference of two pressure levels, select the difference level specified in the inputs
     elif (level != 'sfc') and (len(level) > 4):
-        train_data = train_data.sel(diff_level=level)
-        test_data = test_data.sel(diff_level=level)
-        var_name = train_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'
+        total_data = total_data.sel(diff_level=level)
+        var_name = total_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'
         var = var + level
     else:
-        var_name = train_data.long_name
+        var_name = total_data.long_name
     # Convert the data of some variables to the desired units
-    if (var == 'sst'): # Convert from K to C
-        train_data = train_data + 273.15
-        test_data = test_data + 273.15
-    elif var == 'mslp': # Convert from Pa to hPa
-        train_data = train_data / 100
-        test_data = test_data / 100
-    total_data = xr.concat([train_data, test_data], dim='time')
+    if var == 'sst': # Convert from K to C
+        total_data = total_data - 273.15
+    elif var == 'msl': # Convert from Pa to hPa
+        total_data = total_data / 100
+    # Get the train and test data
+    train_data = total_data.sel(time=slice(str(train_yearI)+'-01-01', str(train_yearF)+'-12-31'))
 
     ## Perform the cluster only on the train years
     # Data preprocessing

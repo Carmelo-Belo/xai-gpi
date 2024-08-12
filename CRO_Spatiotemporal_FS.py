@@ -72,7 +72,7 @@ class ml_prediction(AbsObjectiveFunc):
         # and wether we want to maximize or minimize the function 
 
         # We set the limits of the vector (window size, time lags and variable selection)
-        self.sup_lim = np.append(np.append(np.repeat(2, predictors_df.shape[1]), np.repeat(2, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
+        self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
         self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
 
         super().__init__(self.size, self.opt, self.sup_lim, self.inf_lim)
@@ -126,7 +126,7 @@ class ml_prediction(AbsObjectiveFunc):
         score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
         clf.fit(X_train, Y_train)
         Y_pred = clf.predict(X_test)
-        print(score.mean(), f1_score(Y_pred, Y_test))
+        print(score.mean(), f1_score(Y_pred, Y_test, average='weighted'))
 
         # Save solution
         sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test)], 'Sol': [solution]})], ignore_index=True)
