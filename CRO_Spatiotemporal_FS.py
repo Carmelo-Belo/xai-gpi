@@ -22,9 +22,9 @@ data_dir = os.path.join(fs_dir, 'data')
 """
 Path and name of the predictor dataset and target dataset
 """
-predictor_file = 'predictors_1980-2021_12clusters_4vars_10idxs.csv'
+predictor_file = 'predictors_1965-2022_12clusters_4vars_10idxs.csv'
 predictors_path = os.path.join(data_dir, predictor_file)
-target_file = 'target_1980-2021_2.5x2.5.csv'
+target_file = 'target_1965-2022_2.5x2.5.csv'
 target_path = os.path.join(data_dir, target_file)
 
 # Load the dataset and target
@@ -37,9 +37,9 @@ target_df.index = pd.to_datetime(target_df.index)
 File names to store the solutions provided by the algorithm
 """
 experiment_filename = predictor_file[-37:]
-outuput_dir = os.path.join(fs_dir, 'results', 'test')
-os.makedirs(outuput_dir, exist_ok=True)
-indiv_path = os.path.join(outuput_dir, experiment_filename)
+output_dir = os.path.join(fs_dir, 'results', 'test')
+os.makedirs(output_dir, exist_ok=True)
+indiv_path = os.path.join(output_dir, experiment_filename)
 model_kind = 'LogReg'
 solution_filename = 'CRO_' + model_kind + '_' + experiment_filename
 
@@ -48,9 +48,11 @@ sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
 sol_data.to_csv(indiv_path, sep=' ', header=sol_data.columns, index=None)
 
 # Split the dataset into train and test
+train_yearI = 1980 # First year of the training dataset
 train_yearF = 2013 # Last year of the training dataset
-train_indices = predictors_df.index.year <= train_yearF
-test_indices = predictors_df.index.year > train_yearF
+test_yearF = 2021 # Last year of the test dataset
+train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
+test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
 
 """
 All the following methods will have to be implemented for the algorithm to work properly
@@ -66,13 +68,14 @@ class ml_prediction(AbsObjectiveFunc):
         self.opt = "min" # it can be "max" or "min"
 
         # We set the limits of the vector (window size, time lags and variable selection)
-        # self.sup_lim = np.append(np.append(np.repeat(60, pred_dataframe.shape[1]),np.repeat(180, pred_dataframe.shape[1])),np.repeat(1, pred_dataframe.shape[1]))  # array where each component indicates the maximum value of the component of the vector
-        # self.inf_lim = np.append(np.append(np.repeat(1, pred_dataframe.shape[1]),np.repeat(0, pred_dataframe.shape[1])),np.repeat(0, pred_dataframe.shape[1])) # array where each component indicates the minimum value of the component of the vector
+        # self.sup_lim = np.append(np.append(np.repeat(60, predictors_df.shape[1]),np.repeat(180, predictors_df.shape[1])),np.repeat(1, predictors_df.shape[1]))  # array where each component indicates the maximum value of the component of the vector
+        # self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]),np.repeat(0, predictors_df.shape[1])),np.repeat(0, predictors_df.shape[1])) # array where each component indicates the minimum value of the component of the vector
         # we call the constructor of the superclass with the size of the vector
         # and wether we want to maximize or minimize the function 
 
         # We set the limits of the vector (window size, time lags and variable selection)
-        self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
+        # Maximum time sequences I can select is 2, maximum time lag is 1 month, and the last one is regarding the binary selection of a variable
+        self.sup_lim = np.append(np.append(np.repeat(2, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
         self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
 
         super().__init__(self.size, self.opt, self.sup_lim, self.inf_lim)
@@ -129,7 +132,7 @@ class ml_prediction(AbsObjectiveFunc):
         print(score.mean(), f1_score(Y_pred, Y_test, average='weighted'))
 
         # Save solution
-        sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test)], 'Sol': [solution]})], ignore_index=True)
+        sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test, average='weighted')], 'Sol': [solution]})], ignore_index=True)
         sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
         
         return 1/score.mean()
@@ -169,7 +172,7 @@ params = {
     "stop_cond": "Neval",
     "time_limit": 4000.0,
     "Ngen": 10000,
-    "Neval": 15000,
+    "Neval": 150,
     "fit_target": 1000,
 
     "verbose": True,
@@ -182,11 +185,11 @@ params = {
     "dyn_steps": 10,
     "prob_amp": 0.01,
 
-    # "prob_file": "prob_history_"+filename+".csv",
-    # "popul_file": "last_population"+filename+".csv",
-    # "history_file": "fit_history_"+filename+".csv",
-    "solution_file": "best_solution_" + experiment_filename,
-    # "indiv_file": "indiv_hisotry_"+filename+".csv",
+    "prob_file": os.path.join(output_dir, "prob_history_" + experiment_filename),
+    "popul_file": os.path.join(output_dir, "last_population_" + experiment_filename),
+    "history_file": os.path.join(output_dir, "fit_history_" + experiment_filename),
+    "solution_file": os.path.join(output_dir, "best_solution_" + experiment_filename),
+    "indiv_file": os.path.join(output_dir, "indiv_hisotry_" + experiment_filename),
 }
 
 operators = [
@@ -200,5 +203,5 @@ cro_alg = CRO_SL(objfunc, operators, params)
 
 solution, obj_value = cro_alg.optimize()
 
-solution.tofile(os.path.join(outuput_dir, solution_filename), sep=',')
+solution.tofile(os.path.join(output_dir, solution_filename), sep=',')
 
