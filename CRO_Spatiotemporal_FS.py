@@ -5,9 +5,9 @@ from PyCROSL.SubstrateInt import *
 
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from sklearn.metrics import f1_score, mean_absolute_error
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score
+from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -40,7 +40,7 @@ experiment_filename = predictor_file[-37:]
 output_dir = os.path.join(fs_dir, 'results', 'test')
 os.makedirs(output_dir, exist_ok=True)
 indiv_path = os.path.join(output_dir, experiment_filename)
-model_kind = 'LogReg'
+model_kind = 'LinReg'
 solution_filename = 'CRO_' + model_kind + '_' + experiment_filename
 
 # Create an empty file to store the solutions provided by the algorithm
@@ -123,16 +123,23 @@ class ml_prediction(AbsObjectiveFunc):
         X_test=pd.DataFrame(X_std_test, columns=X_test.columns, index=X_test.index)
 
         # Train model
-        clf = LogisticRegression()
+        # clf = LogisticRegression() -> gives Nan in the mean score of cross validation
+        clf = LinearRegression()
 
         # Apply cross validation
-        score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
+        # score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
+        score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
         clf.fit(X_train, Y_train)
         Y_pred = clf.predict(X_test)
-        print(score.mean(), f1_score(Y_pred, Y_test, average='weighted'))
+        # print(score.mean(), f1_score(Y_pred, Y_test, average='weighted'))
+        mse = mean_squared_error(Y_test, Y_pred)
+        r2 = r2_score(Y_test, Y_pred)
+        print(f"Cross-validated MSE: {-score.mean()}")  # Negated to report positive MSE
+        print(f"Test MSE: {mse}, Test R^2: {r2}")
 
         # Save solution
-        sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test, average='weighted')], 'Sol': [solution]})], ignore_index=True)
+        # sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test, average='weighted')], 'Sol': [solution]})], ignore_index=True)
+        sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
         sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
         
         return 1/score.mean()
