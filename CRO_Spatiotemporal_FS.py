@@ -17,12 +17,15 @@ import os
 # Set directories
 project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
 fs_dir = os.path.join(project_dir, 'FS_TCG')
-data_dir = os.path.join(fs_dir, 'data')
+data_dir = os.path.join(fs_dir, 'data', '12clusters')
 
 """
 Path and name of the predictor dataset and target dataset
 """
-predictor_file = 'predictors_1965-2022_12clusters_4vars_10idxs.csv'
+# predictor_file = 'predictors_1965-2022_12clusters_4vars_10idxs.csv'
+# experiment_filename = '1965-2022_12clusters_4vars_10idxs.csv'
+predictor_file = 'predictors_1965-2022_12clusters_14vars_10idxs.csv'
+experiment_filename = '1965-2022_12clusters_14vars_10idxs.csv'
 predictors_path = os.path.join(data_dir, predictor_file)
 target_file = 'target_1965-2022_2.5x2.5.csv'
 target_path = os.path.join(data_dir, target_file)
@@ -123,8 +126,8 @@ class ml_prediction(AbsObjectiveFunc):
         X_test=pd.DataFrame(X_std_test, columns=X_test.columns, index=X_test.index)
 
         # Train model
-        # clf = LogisticRegression() -> gives Nan in the mean score of cross validation
-        clf = LinearRegression()
+        clf = LogisticRegression() # -> gives Nan in the mean score of cross validation
+        # clf = LinearRegression()
 
         # Apply cross validation
         # score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
@@ -192,11 +195,11 @@ params = {
     "dyn_steps": 10,
     "prob_amp": 0.01,
 
-    "prob_file": os.path.join(output_dir, "prob_history_" + experiment_filename),
-    "popul_file": os.path.join(output_dir, "last_population_" + experiment_filename),
-    "history_file": os.path.join(output_dir, "fit_history_" + experiment_filename),
-    "solution_file": os.path.join(output_dir, "best_solution_" + experiment_filename),
-    "indiv_file": os.path.join(output_dir, "indiv_hisotry_" + experiment_filename),
+    "prob_file": os.path.join(output_dir, 'prob_history_' + experiment_filename),
+    "popul_file": os.path.join(output_dir, 'last_population_' + experiment_filename),
+    "history_file": os.path.join(output_dir, 'fit_history_' + experiment_filename),
+    "solution_file": os.path.join(output_dir, 'best_solution_' + experiment_filename),
+    "indiv_file": os.path.join(output_dir, 'indiv_hisotry_' + experiment_filename),
 }
 
 operators = [
