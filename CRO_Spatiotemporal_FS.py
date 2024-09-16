@@ -14,20 +14,28 @@ import pandas as pd
 import numpy as np
 import os
 
-# Set directories
+# Set parameters of experiment (data directory, predictors file, model kind, output directory, train-test years etc.)
 project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
+n_clusters = 12
+n_vars = 14
+n_idxs = 10
+target_file = 'target_1965-2022_2.5x2.5.csv'
+output_folder = 'test'
+model_kind = 'LinReg' # 'LinReg' or 'LogReg'
+train_yearI = 1980 # First year of the training dataset
+train_yearF = 2013 # Last year of the training dataset
+test_yearF = 2021 # Last year of the test dataset
+
+# Set directories
 fs_dir = os.path.join(project_dir, 'FS_TCG')
-data_dir = os.path.join(fs_dir, 'data', '12clusters')
+data_dir = os.path.join(fs_dir, 'data', f'{n_clusters}clusters')
 
 """
 Path and name of the predictor dataset and target dataset
 """
-# predictor_file = 'predictors_1965-2022_12clusters_4vars_10idxs.csv'
-# experiment_filename = '1965-2022_12clusters_4vars_10idxs.csv'
-predictor_file = 'predictors_1965-2022_12clusters_14vars_10idxs.csv'
-experiment_filename = '1965-2022_12clusters_14vars_10idxs.csv'
+experiment_filename = f'1965-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+predictor_file = 'predictors_' + experiment_filename
 predictors_path = os.path.join(data_dir, predictor_file)
-target_file = 'target_1965-2022_2.5x2.5.csv'
 target_path = os.path.join(data_dir, target_file)
 
 # Load the dataset and target
@@ -39,11 +47,9 @@ target_df.index = pd.to_datetime(target_df.index)
 """
 File names to store the solutions provided by the algorithm
 """
-experiment_filename = predictor_file[-37:]
-output_dir = os.path.join(fs_dir, 'results', 'test')
+output_dir = os.path.join(fs_dir, 'results', output_folder)
 os.makedirs(output_dir, exist_ok=True)
-indiv_path = os.path.join(output_dir, experiment_filename)
-model_kind = 'LinReg'
+indiv_path = os.path.join(output_dir, model_kind + '_' + experiment_filename)
 solution_filename = 'CRO_' + model_kind + '_' + experiment_filename
 
 # Create an empty file to store the solutions provided by the algorithm
@@ -51,9 +57,6 @@ sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
 sol_data.to_csv(indiv_path, sep=' ', header=sol_data.columns, index=None)
 
 # Split the dataset into train and test
-train_yearI = 1980 # First year of the training dataset
-train_yearF = 2013 # Last year of the training dataset
-test_yearF = 2021 # Last year of the test dataset
 train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
 test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
 
@@ -126,23 +129,33 @@ class ml_prediction(AbsObjectiveFunc):
         X_test=pd.DataFrame(X_std_test, columns=X_test.columns, index=X_test.index)
 
         # Train model
-        clf = LogisticRegression() # -> gives Nan in the mean score of cross validation
-        # clf = LinearRegression()
-
-        # Apply cross validation
-        # score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
-        score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
-        clf.fit(X_train, Y_train)
-        Y_pred = clf.predict(X_test)
-        # print(score.mean(), f1_score(Y_pred, Y_test, average='weighted'))
-        mse = mean_squared_error(Y_test, Y_pred)
-        r2 = r2_score(Y_test, Y_pred)
-        print(f"Cross-validated MSE: {-score.mean()}")  # Negated to report positive MSE
-        print(f"Test MSE: {mse}, Test R^2: {r2}")
+        if model_kind == 'LinReg':
+            clf = LinearRegression()
+            # Apply cross validation
+            score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
+            clf.fit(X_train, Y_train)
+            Y_pred = clf.predict(X_test)
+            mse = mean_squared_error(Y_test, Y_pred)
+            r2 = r2_score(Y_test, Y_pred)
+            print(f"Cross-validated MSE: {-score.mean()}")  # Negated to report positive MSE
+            print(f"Test MSE: {mse}, Test R^2: {r2}")
+            # Prepare solution to save
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
+        elif model_kind == 'LogReg':
+            clf = LogisticRegression() # -> gives Nan in the mean score of cross validation
+            # Apply cross validation
+            score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
+            clf.fit(X_train, Y_train)
+            Y_pred = clf.predict(X_test)
+            f1_test = f1_score(Y_pred, Y_test, average='weighted')
+            print(f"Cross-validated F1: {score.mean()}")
+            print(f"Test F1: {f1_test}")
+            # Prepare solution to save
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_test], 'Sol': [solution]})], ignore_index=True)
+        else:
+            raise ValueError("Model kind not recognized")
 
         # Save solution
-        # sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_score(Y_pred, Y_test, average='weighted')], 'Sol': [solution]})], ignore_index=True)
-        sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
         sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
         
         return 1/score.mean()
@@ -195,11 +208,11 @@ params = {
     "dyn_steps": 10,
     "prob_amp": 0.01,
 
-    "prob_file": os.path.join(output_dir, 'prob_history_' + experiment_filename),
-    "popul_file": os.path.join(output_dir, 'last_population_' + experiment_filename),
-    "history_file": os.path.join(output_dir, 'fit_history_' + experiment_filename),
-    "solution_file": os.path.join(output_dir, 'best_solution_' + experiment_filename),
-    "indiv_file": os.path.join(output_dir, 'indiv_hisotry_' + experiment_filename),
+    "prob_file": os.path.join(output_dir, 'prob_history_' + model_kind + '_' + experiment_filename),
+    "popul_file": os.path.join(output_dir, 'last_population_' + model_kind + '_' + experiment_filename),
+    "history_file": os.path.join(output_dir, 'fit_history_' + model_kind + '_' + experiment_filename),
+    "solution_file": os.path.join(output_dir, 'best_solution_' + model_kind + '_' + experiment_filename),
+    "indiv_file": os.path.join(output_dir, 'indiv_hisotry_' + model_kind + '_' + experiment_filename),
 }
 
 operators = [
