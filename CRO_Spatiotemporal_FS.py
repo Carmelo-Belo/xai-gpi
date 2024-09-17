@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 import warnings
 warnings.filterwarnings('ignore')
@@ -17,11 +18,11 @@ import os
 # Set parameters of experiment (data directory, predictors file, model kind, output directory, train-test years etc.)
 project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
 n_clusters = 12
-n_vars = 14
+n_vars = 4
 n_idxs = 10
 target_file = 'target_1965-2022_2.5x2.5.csv'
 output_folder = 'test'
-model_kind = 'LinReg' # 'LinReg' or 'LogReg'
+model_kind = 'MLPReg' # 'LinReg' or 'LogReg' or 'MLPReg'
 train_yearI = 1980 # First year of the training dataset
 train_yearF = 2013 # Last year of the training dataset
 test_yearF = 2021 # Last year of the test dataset
@@ -152,6 +153,26 @@ class ml_prediction(AbsObjectiveFunc):
             print(f"Test F1: {f1_test}")
             # Prepare solution to save
             sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_test], 'Sol': [solution]})], ignore_index=True)
+        elif model_kind == 'MLPReg':
+            n_predictors = X_train.shape[1]
+            clf = MLPRegressor(
+                hidden_layer_sizes=(n_predictors*2, n_predictors),
+                activation='relu',
+                solver='adam',
+                alpha=0.0001,
+                batch_size=32,
+                shuffle=True,   
+            )
+            # Apply cross validation
+            score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
+            clf.fit(X_train, Y_train)
+            Y_pred = clf.predict(X_test)
+            mse = mean_squared_error(Y_test, Y_pred)
+            r2 = r2_score(Y_test, Y_pred)
+            print(f"Cross-validated MSE: {-score.mean()}")
+            print(f"Test MSE: {mse}, Test R^2: {r2}")
+            # Prepare solution to save
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
         else:
             raise ValueError("Model kind not recognized")
 
