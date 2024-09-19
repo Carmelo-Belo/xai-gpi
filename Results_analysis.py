@@ -7,6 +7,10 @@ import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 from matplotlib.ticker import AutoMinorLocator
 from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
+from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import cross_val_score
+from sklearn import preprocessing
+from scipy.stats import pearsonr
 
 # Set the parameters of experiment to retrieve and process the corresponding resutls
 project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -32,9 +36,15 @@ predictor_file = 'predictors_' + experiment_filename
 predictors_path = os.path.join(data_dir, predictor_file)
 target_path = os.path.join(data_dir, target_file)
 
-# Load the predictors in a DataFrame
-pred_dataframe_opt = pd.read_csv(predictors_path, index_col=0)
-pred_dataframe_opt.index = pd.to_datetime(pred_dataframe_opt.index)
+# Load the predictors and the target in a DataFrame
+predictors_df = pd.read_csv(predictors_path, index_col=0)
+predictors_df.index = pd.to_datetime(predictors_df.index)
+target_df = pd.read_csv(target_path, index_col=0)
+target_df.index = pd.to_datetime(target_df.index)
+
+# Set the indices for the training and test datasets
+train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
+test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
 
 # Load the labels files and plot the clusters for each atmospheric variable
 files_labels = os.listdir(data_dir)
@@ -147,9 +157,8 @@ def plot_board(board, column_names, feat_sel):
             ax.add_patch(rect)
 
     plt.tight_layout()
-    plt.show()
 
-column_names = pred_dataframe_opt.columns.tolist()
+column_names = predictors_df.columns.tolist()
 final_sequence = array_bestCV[len(column_names):2*len(column_names)]
 sequence_length = array_bestCV[:len(column_names)]
 feat_sel = array_bestCV[2*len(column_names):]
@@ -159,3 +168,76 @@ n_cols = len(column_names)
 
 board_best = create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
 plot_board(board_best, column_names, feat_sel)
+
+## Train MLPregressor with the best solution found
+# Create dataset according to solution
+variable_selection = feat_sel.astype(int)
+time_sequences = sequence_length.astype(int)
+time_lags = final_sequence.astype(int)
+dataset_opt = target_df.copy()
+for c, col in enumerate(predictors_df.columns):
+    if variable_selection[c] == 0 or time_sequences[c] == 0:
+        continue
+    for j in range(time_sequences[c]):
+        dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
+
+# Split dataset into train and test
+train_dataset = dataset_opt[train_indices]
+test_dataset = dataset_opt[test_indices]
+
+# Standardize the dataset
+Y_column = 'tcg' 
+X_train = train_dataset[train_dataset.columns.drop([Y_column]) ]
+Y_train = train_dataset[Y_column]
+X_test = test_dataset[test_dataset.columns.drop([Y_column]) ]
+Y_test = test_dataset[Y_column]
+scaler = preprocessing.StandardScaler()
+X_std_train = scaler.fit(X_train)
+X_std_train = scaler.transform(X_train)
+X_std_test = scaler.transform(X_test)
+X_train = pd.DataFrame(X_std_train, columns=X_train.columns, index=X_train.index)
+X_test = pd.DataFrame(X_std_test, columns=X_test.columns, index=X_test.index)
+
+# Train the MLPRegressor
+n_predictors = len(X_train.columns)
+mlpreg = MLPRegressor(
+    hidden_layer_sizes=(n_predictors*2, n_predictors),
+    activation='relu',
+    solver='adam',
+    alpha=0.0001,
+    batch_size=32,
+    shuffle=True,
+)
+
+# Cross-Validation
+score = cross_val_score(mlpreg, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
+mlpreg.fit(X_train, Y_train)
+Y_pred = mlpreg.predict(X_test)
+Y_pred = pd.DataFrame(Y_pred, index=X_test.index, columns=['tcg'])
+r_mlpreg, _ = pearsonr(Y_test, Y_pred['tcg'])
+
+# Compare observations to predictions
+xticks = pd.Series(Y_test.index).dt.strftime('%m-%Y').to_numpy()
+plt.figure(figsize=(10, 6))
+plt.plot(xticks, Y_test, label='Observed (IBTrACS)', color='#15E6CD',)
+plt.plot(xticks, Y_pred['tcg'], label=f'FS-MLP - {r_mlpreg:.3f}', color='#0CF574')
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+plt.xticks(ticks=np.arange(len(xticks))[::4], labels=xticks[::4], rotation=45)
+plt.xlabel('Months')
+plt.ylabel('# of TCs per month')
+plt.legend()
+plt.tight_layout()
+
+# Compare annual accumulated number of TCs
+Y_test_annual = Y_test.resample('YE').sum()
+Y_pred_annual = Y_pred.resample('YE').sum()
+rY_mlpreg, _ = pearsonr(Y_test_annual, Y_pred_annual['tcg'])
+plt.figure(figsize=(10, 6))
+plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#15E6CD',)
+plt.plot(Y_pred_annual.index.year, Y_pred_annual['tcg'], label=f'FS-MLP - {rY_mlpreg:.3f}', color='#0CF574')
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+plt.xlabel('Years')
+plt.ylabel('# of TCs per year')
+plt.legend()
+plt.tight_layout()
+plt.show()
