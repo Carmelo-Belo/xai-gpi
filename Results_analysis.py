@@ -228,6 +228,19 @@ plt.ylabel('# of TCs per month')
 plt.legend()
 plt.tight_layout()
 
+# Compare seasonal accumulated number of TCs
+Y_test_seasonal = Y_test.groupby(Y_test.index.month).sum()
+Y_pred_seasonal = Y_pred.groupby(Y_pred.index.month).sum()
+rS_mlpreg, _ = pearsonr(Y_test_seasonal, Y_pred_seasonal['tcg'])
+plt.figure(figsize=(10, 6))
+plt.plot(Y_test_seasonal.index, Y_test_seasonal, label='Observed (IBTrACS)', color='#15E6CD',)
+plt.plot(Y_pred_seasonal.index, Y_pred_seasonal['tcg'], label=f'FS-MLP - {rS_mlpreg:.3f}', color='#0CF574')
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+plt.xlabel('Months')
+plt.ylabel('# of TCs per month')
+plt.legend()
+plt.tight_layout()
+
 # Compare annual accumulated number of TCs
 Y_test_annual = Y_test.resample('YE').sum()
 Y_pred_annual = Y_pred.resample('YE').sum()
