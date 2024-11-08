@@ -204,7 +204,7 @@ class ml_prediction(AbsObjectiveFunc):
 objfunc = ml_prediction(3*predictors_df.shape[1])
 
 params = {
-    "popSize": 100,
+    "popSize": 100, # play with this parameter
     "rho": 0.6,
     "Fb": 0.98,
     "Fd": 0.2,
@@ -216,7 +216,7 @@ params = {
     "stop_cond": "Neval",
     "time_limit": 4000.0,
     "Ngen": 10000,
-    "Neval": 150,
+    "Neval": 150, # normally use 15000
     "fit_target": 1000,
 
     "verbose": True,

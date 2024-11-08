@@ -137,7 +137,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
 
     # Perform the clustering
-    from FS_TCG.clustering.utils_clustering import cluster_model
+    from utils_clustering import cluster_model
     cluster = cluster_model(data_res_masked, n_clusters, var)
     cluster.check_data()
     cluster.kmeans()
@@ -235,164 +235,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     labels_dataframe.to_csv(os.path.join(path_output, 'labels_' + var + basin + str(n_clusters) + '.csv'))
 
     return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
-
-
-def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
-    var = 'sst'
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
-
-    min_lat=-5
-    max_lat=5
-    min_lon=-170
-    max_lon=-120
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-    daily_data_total.close()
-
-    variable = var  
-    # Data preprocessing
-    from FS_TCG.clustering.utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-
-
-    # Merge the train and test data
-
-    # data_filtered_total = xr.concat([data_filtered, data_filtered_test], dim='time')
-    data_filtered_total = data_filtered
-
-    # Compute ENSO index
-
-    enso = data_filtered_total.mean(dim=['latitude','longitude'])
-
-    # Save the ENSO index
-
-    enso = enso.to_dataframe()
-    enso.columns = ['ENSO']
-    enso.to_csv(path_output+'ENSO_index.csv')
-
-    # Plot the ENSO index
-
-    plt.plot(np.arange(0,len(enso)), enso['ENSO'])
-
-    return enso
-
-
-def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
-    var = 'sst'
-
-    # Compute area averaged SST anomaly in the western tropical Indian Ocean
-
-    min_lat=-10
-    max_lat=10
-    min_lon=50
-    max_lon=70
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
-
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-    daily_data_total.close()
-
-    variable = var  
-    # Data preprocessing
-    from FS_TCG.clustering.utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-    # Merge the train and test data
-
-    # data_filtered_total_1 = xr.concat([data_filtered, data_filtered_test], dim='time')
-    data_filtered_total_1 = data_filtered
-    # Compute area averaged SST anomaly in the sotheastern tropical Indian Ocean
-
-    min_lat=-10
-    max_lat=0
-    min_lon=90
-    max_lon=110
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    
-
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_train.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_train.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-
-
-    variable = var  
-    # Data preprocessing
-    from FS_TCG.clustering.utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-    # Merge the train and test data
-
-    data_filtered_total_2 = xr.concat([data_filtered, data_filtered_test], dim='time')
-
-    # Compute IOD index
-
-    iod = data_filtered_total_1.mean(dim=['latitude','longitude'])-data_filtered_total_2.mean(dim=['latitude','longitude'])
-
-    # Save the IOD index
-
-    iod = iod.to_dataframe()
-    iod.columns = ['IOD']
-    iod.to_csv(path_output+'IOD_index.csv')
-
-    # Plot the IOD index
-
-    plt.plot(np.arange(0,len(iod)), iod['IOD'])
-
-    return iod
-
 
 class cluster_model:
 
@@ -508,4 +350,159 @@ class cluster_model:
         
         ax.set_title(title, fontsize=30)
         plt.tight_layout()
-        plt.show()
+
+def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
+    var = 'sst'
+
+    import xarray as xr
+    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
+    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
+    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
+
+    min_lat=-5
+    max_lat=5
+    min_lon=-170
+    max_lon=-120
+
+    # Perform the cluster only on the train years
+    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
+    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
+    daily_data_total.close()
+
+    variable = var  
+    # Data preprocessing
+    from utils_clustering import filter_xarray
+    import numpy as np
+    # Data is filtered based on the geographical limits, months, resolution and years
+    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+
+    # Perform the seasonal soothing
+    
+    from utils_clustering import seasonal_smoothing
+    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
+    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
+
+            
+    data_filtered_clima.close()
+
+
+    # Merge the train and test data
+
+    # data_filtered_total = xr.concat([data_filtered, data_filtered_test], dim='time')
+    data_filtered_total = data_filtered
+
+    # Compute ENSO index
+
+    enso = data_filtered_total.mean(dim=['latitude','longitude'])
+
+    # Save the ENSO index
+
+    enso = enso.to_dataframe()
+    enso.columns = ['ENSO']
+    enso.to_csv(path_output+'ENSO_index.csv')
+
+    # Plot the ENSO index
+
+    plt.plot(np.arange(0,len(enso)), enso['ENSO'])
+
+    return enso
+
+
+def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
+    var = 'sst'
+
+    # Compute area averaged SST anomaly in the western tropical Indian Ocean
+
+    min_lat=-10
+    max_lat=10
+    min_lon=50
+    max_lon=70
+
+    import xarray as xr
+    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
+    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
+    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
+
+
+    # Perform the cluster only on the train years
+    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
+    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
+    daily_data_total.close()
+
+    variable = var  
+    # Data preprocessing
+    from utils_clustering import filter_xarray
+    import numpy as np
+    # Data is filtered based on the geographical limits, months, resolution and years
+    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+
+    # Perform the seasonal soothing
+    
+    from utils_clustering import seasonal_smoothing
+    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
+    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
+
+            
+    data_filtered_clima.close()
+    # Merge the train and test data
+
+    # data_filtered_total_1 = xr.concat([data_filtered, data_filtered_test], dim='time')
+    data_filtered_total_1 = data_filtered
+    # Compute area averaged SST anomaly in the sotheastern tropical Indian Ocean
+
+    min_lat=-10
+    max_lat=0
+    min_lon=90
+    max_lon=110
+
+    import xarray as xr
+    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
+    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
+    
+
+
+    # Perform the cluster only on the train years
+    daily_data_train = daily_data_train.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
+    data_clima_time = daily_data_train.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
+
+
+    variable = var  
+    # Data preprocessing
+    from utils_clustering import filter_xarray
+    import numpy as np
+    # Data is filtered based on the geographical limits, months, resolution and years
+    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+    data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
+
+    # Perform the seasonal soothing
+    
+    from utils_clustering import seasonal_smoothing
+    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
+    data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
+
+            
+    data_filtered_clima.close()
+    # Merge the train and test data
+
+    data_filtered_total_2 = xr.concat([data_filtered, data_filtered_test], dim='time')
+
+    # Compute IOD index
+
+    iod = data_filtered_total_1.mean(dim=['latitude','longitude'])-data_filtered_total_2.mean(dim=['latitude','longitude'])
+
+    # Save the IOD index
+
+    iod = iod.to_dataframe()
+    iod.columns = ['IOD']
+    iod.to_csv(path_output+'IOD_index.csv')
+
+    # Plot the IOD index
+
+    plt.plot(np.arange(0,len(iod)), iod['IOD'])
+
+    return iod
