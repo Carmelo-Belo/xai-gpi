@@ -26,7 +26,7 @@ def build_dataset(cluster_variables, index_variables, cluster_path, indexes_path
     # Load the cluster data and merge it in a single dataframe
     n_clusters = int(cluster_path[-10:-8])
     for v, var in enumerate(cluster_variables):
-        filename = f'averages_{var}GLB{n_clusters}.csv'
+        filename = f'averages_{var}.csv'
         path = os.path.join(cluster_path, filename)
         if v == 0:
             dataset_cluster = pd.read_csv(path, index_col=0, parse_dates=True)

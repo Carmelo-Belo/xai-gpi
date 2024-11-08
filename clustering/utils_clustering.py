@@ -149,7 +149,13 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     # Plot the clusters
     latitudes = train_data.latitude.values
     longitudes = train_data.longitude.values
-    cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask, var_name)
+    clusters_fig = cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask, var_name)
+
+    # Save the clusters figures in the output directory
+    output_figs_dir = os.path.join(path_output, f'figures')
+    os.makedirs(output_figs_dir, exist_ok=True)
+    fig_name = os.path.join(output_figs_dir, f'{var}.pdf')
+    clusters_fig.savefig(fig_name, bbox_inches='tight', format='pdf', dpi=300)
 
     # Get the data for the centroids 
     iter = itertools.product(latitudes, longitudes)
@@ -183,10 +189,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         centroids_data.append(centroid_data)
     centroids_dataframe = pd.DataFrame(centroids_data).T
     centroids_dataframe.index = data_filtered_total.time.values
-    centroids_dataframe.columns = [var + basin + '_cluster' + str(i) for i in range(1, n_clusters+1)]
+    centroids_dataframe.columns = [var + '_cluster' + str(i) for i in range(1, n_clusters+1)]
 
     # Get average data for each cluster, weighted averages are calculated. Batch size is adjusted to avoid memory errors
-    clusters_av_dataframe = pd.DataFrame(columns=[var + basin + '_cluster' + str(i) for i in range(1, n_clusters+1)])
+    clusters_av_dataframe = pd.DataFrame(columns=[var + '_cluster' + str(i) for i in range(1, n_clusters+1)])
     weights = np.cos(np.deg2rad(nodes_list[:,0]))
     data_cluster_avg = data_filtered_total.values
 
@@ -219,7 +225,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
             data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
         weights_masked = weights[cluster_mask]
         cluster_avg = calculate_weighted_average(data_cluster_avg_masked, weights_masked, batch_size)
-        clusters_av_dataframe[var + basin + '_cluster' + str(c+1)] = cluster_avg
+        clusters_av_dataframe[var + '_cluster' + str(c+1)] = cluster_avg
 
     clusters_av_dataframe.index = data_filtered_total.time.values
 
@@ -230,9 +236,9 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
 
     # Save the data
-    centroids_dataframe.to_csv(os.path.join(path_output, 'centroids_' + var + basin + str(n_clusters) + '.csv'))
-    clusters_av_dataframe.to_csv(os.path.join(path_output, 'averages_' + var + basin + str(n_clusters) + '.csv'))
-    labels_dataframe.to_csv(os.path.join(path_output, 'labels_' + var + basin + str(n_clusters) + '.csv'))
+    centroids_dataframe.to_csv(os.path.join(path_output, f'centroids_{var}.csv'))
+    clusters_av_dataframe.to_csv(os.path.join(path_output, f'averages_{var}.csv'))
+    labels_dataframe.to_csv(os.path.join(path_output, f'labels_{var}.csv'))
 
     return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
 
@@ -350,6 +356,8 @@ class cluster_model:
         
         ax.set_title(title, fontsize=30)
         plt.tight_layout()
+        plt.close()
+        return fig
 
 def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
     var = 'sst'

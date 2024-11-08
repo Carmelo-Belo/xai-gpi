@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import argparse
-default_n_threads = 8
+default_n_threads = 128
 os.environ['OPENBLAS_NUM_THREADS'] = f"{default_n_threads}"
 os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
 os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
@@ -15,7 +15,7 @@ def main(basin, n_clusters, train_yearI, train_yearF, test_yearI, test_yearF, re
     fs_data_dir = os.path.join(project_dir, 'FS_TCG', 'data')
     clustering_dir = os.path.join(project_dir, 'FS_TCG', 'clustering')
     # Create output directory
-    path_output = os.path.join(fs_data_dir, f'{n_clusters}clusters')
+    path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters')
     os.makedirs(path_output, exist_ok=True)
     # Load dataframe containing information of variables to be clustered
     df_cluster_vars = pd.read_csv(os.path.join(clustering_dir, 'vars_dict.csv'))
