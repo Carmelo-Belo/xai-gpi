@@ -18,7 +18,6 @@ def main(basin, n_clusters, res, first_year, last_year):
 
     dataset, target = build_dataset(cluster_variables, n_clusters, climate_indexes, cluster_path, indexes_path, target_path, first_year, last_year, save_path, month_col=True)
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build dataset for feature selection')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin')

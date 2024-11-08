@@ -42,14 +42,6 @@ def main(basin, n_clusters, train_yearI, train_yearF, test_yearI, test_yearF, re
                                                                                                     test_yearI, test_yearF, resolution, path_predictor, 
                                                                                                     path_output)
 
-basin = 'GLB'
-n_clusters = 12
-norm = False
-seasonal_smoothing = False
-train_yearI, train_yearF = 1980, 2013
-test_yearI, test_yearF = 2014, 2021
-res = 2.5
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Clustering of variables')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin')
