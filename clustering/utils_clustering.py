@@ -137,7 +137,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
         data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
 
     # Perform the clustering
-    from clustering import cluster_model
+    from FS_TCG.clustering.utils_clustering import cluster_model
     cluster = cluster_model(data_res_masked, n_clusters, var)
     cluster.check_data()
     cluster.kmeans()
@@ -257,7 +257,7 @@ def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,l
 
     variable = var  
     # Data preprocessing
-    from FS_TCG.clustering.clustering import filter_xarray
+    from FS_TCG.clustering.utils_clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -266,7 +266,7 @@ def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,l
 
     # Perform the seasonal soothing
     
-    from FS_TCG.clustering.clustering import seasonal_smoothing
+    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
@@ -319,7 +319,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     variable = var  
     # Data preprocessing
-    from FS_TCG.clustering.clustering import filter_xarray
+    from FS_TCG.clustering.utils_clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -328,7 +328,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     # Perform the seasonal soothing
     
-    from FS_TCG.clustering.clustering import seasonal_smoothing
+    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
@@ -358,7 +358,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     variable = var  
     # Data preprocessing
-    from FS_TCG.clustering.clustering import filter_xarray
+    from FS_TCG.clustering.utils_clustering import filter_xarray
     import numpy as np
     # Data is filtered based on the geographical limits, months, resolution and years
     data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
@@ -367,7 +367,7 @@ def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,la
 
     # Perform the seasonal soothing
     
-    from FS_TCG.clustering.clustering import seasonal_smoothing
+    from FS_TCG.clustering.utils_clustering import seasonal_smoothing
     data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
     data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
 
