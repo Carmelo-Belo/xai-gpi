@@ -9,7 +9,7 @@ def check_consecutive_repeats(df,col):
         print('Consecutive values repeated found at',col)
         print(repeats[repeats].index)
 
-def build_dataset(cluster_variables, n_clusters, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, save_path, month_col=False):
+def build_dataset(cluster_variables, n_clusters, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, save_path, month_col=True):
     
     # Create a dataframe containing the data for the climate indeces
     date_range = pd.date_range(start=f'{first_year}-01-01', end=f'{last_year}-12-01', freq='MS')
@@ -50,10 +50,7 @@ def build_dataset(cluster_variables, n_clusters, index_variables, cluster_path, 
             print('Warning: Values above the average+7*std in', col)
 
     # Save data in csv file
-    if month_col:
-        dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(index_variables)}idxs_month.csv'
-    else:
-        dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(index_variables)}idxs.csv'
+    dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(index_variables)}idxs.csv'
     dataset.to_csv(os.path.join(save_path, dataset_filename))
 
     # Build the dataframe for the target variable -> number of tropical cyclone genesis events per month
