@@ -4,11 +4,12 @@ from utils_dataset import build_dataset
 
 def main(basin, n_clusters, res, first_year, last_year):
     # List of variables to include for the feature selection process
-    cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 'w']
+    # cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 'w']
+    cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r400', 'r600', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 'vws_u600-250', 'vws_u850-200', 'vws_v600-250', 'vws_v850-200', 'mgu850', 'mgu600', 'mgv850', 'mgv600', 'zgu850', 'zgu600', 'zgv850', 'zgv600', 'w']
     climate_indexes = ['EA-WR', 'ENSO3.4', 'EP-NP', 'NAO', 'PDO', 'PNA', 'SOI', 'TNA', 'TSA', 'WP']
 
     # Directories to consider to build the dataset for feature selection
-    project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
+    project_dir = '/work/bk1318/b382153/'
     cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters')
     indexes_path = os.path.join(project_dir, 'data', 'CI')
     resolution = '{}x{}'.format(res, res)
@@ -17,6 +18,7 @@ def main(basin, n_clusters, res, first_year, last_year):
     save_path = cluster_path
 
     dataset, target = build_dataset(cluster_variables, n_clusters, climate_indexes, cluster_path, indexes_path, target_path, first_year, last_year, save_path, month_col=True)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build dataset for feature selection')
