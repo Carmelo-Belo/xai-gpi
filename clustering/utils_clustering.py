@@ -335,7 +335,7 @@ class cluster_model:
         lons = np.array([nodes_list[i][1] for i in range(len(nodes_list))])
         lats = np.array([nodes_list[i][0] for i in range(len(nodes_list))])
         n_clusters = len(np.unique(cluster.labels))
-        cmap = plt.cm.get_cmap('tab20', n_clusters)
+        cmap = plt.get_cmap('tab20', n_clusters)
         scatter = ax.scatter(lons, lats, c=cluster.labels, cmap=cmap, s=400, transform=ccrs.PlateCarree())
         
         # Add colorbar
