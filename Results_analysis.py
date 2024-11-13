@@ -20,30 +20,36 @@ from scipy.stats import pearsonr
 def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
     board = np.zeros((n_rows, n_cols))
 
-    for i in range(n_cols):
+    for i in range(n_rows):
         start_index = int(final_sequence[i]) 
-        end_index = int(final_sequence[i])  + int(sequence_length[i])
+        end_index = int(final_sequence[i]) + int(sequence_length[i])
         if feat_sel[i] != 0:
-            board[start_index:end_index, i] = 1
+            board[i, start_index:end_index] = 1
     
     return board
 
 def plot_board(board, column_names, feat_sel):
-    fig, ax = plt.subplots(figsize=(15, 14))
-    ax.imshow(board, cmap='Blues', origin='lower', aspect='auto')
-    ax.set_xticks(np.arange(len(column_names)))
-    ax.set_xticklabels(column_names, rotation=90, fontsize=11)
-    ax.set_yticks(np.arange(board.shape[0])-0.5)
-    ax.set_yticklabels(np.arange(board.shape[0]), fontsize=11)
-    minor_locator = AutoMinorLocator(2)
-    ax.xaxis.set_minor_locator(minor_locator)
-    ax.xaxis.grid(which='minor',color='black', linewidth=1)
-    ax.yaxis.grid(which='minor',color='black', linewidth=1)
-    ax.set_ylabel('Time lags', fontsize=15)
+    fig, ax = plt.subplots(figsize=(5, 14))
+    ax.imshow(np.flip(board, axis=0), cmap='Blues', origin='lower', aspect='auto')
+    
+    ax.xaxis.set_label_position("top") 
+    ax.xaxis.tick_top()
+    ax.set_xticks(np.arange(board.shape[1]))
+    ax.set_xticklabels(np.arange(board.shape[1]), fontsize=11)
 
-    for i in range(board.shape[1]):
+    ax.set_yticks(np.arange(len(column_names)))
+    ax.set_yticklabels(np.flip(np.asarray(column_names)), fontsize=11)
+
+    minor_locator = AutoMinorLocator(2)
+    ax.yaxis.set_minor_locator(minor_locator)
+    ax.yaxis.grid(which='minor',color='black', linewidth=1)
+    ax.xaxis.grid(which='minor',color='black', linewidth=1)
+    ax.set_xlabel('Time lags (months)', fontsize=15)
+
+    for i in range(board.shape[0]):
+        pos = board.shape[0] - i - 1.5
         if feat_sel[i] == 0:
-            rect = plt.Rectangle((i - 0.5, -0.5), 1, 1, color='red')
+            rect = plt.Rectangle((- 0.5, pos), 1, 1, color='red')
             ax.add_patch(rect)
 
     plt.tight_layout()
@@ -161,8 +167,8 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     final_sequence = array_bestCV[len(column_names):2*len(column_names)]
     sequence_length = array_bestCV[:len(column_names)]
     feat_sel = array_bestCV[2*len(column_names):]
-    n_rows = int(((sequence_length + final_sequence)*feat_sel).max())+1
-    n_cols = len(column_names)
+    n_rows = len(column_names)
+    n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
     fig_board = plot_board(board_best, column_names, feat_sel)
     fig_board.savefig(os.path.join(results_figure_dir, f'best_sol.pdf'), format='pdf', dpi=300)
