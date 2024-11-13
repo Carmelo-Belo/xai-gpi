@@ -47,46 +47,6 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     files_labels = [file for file in files_labels if file.startswith('label')]
     files_labels.sort()
 
-    # for label_file in files_labels:
-    #     label_df = pd.read_csv(os.path.join(data_dir, label_file), index_col=0)
-        
-    #     # Set the figure and domain extension
-    #     north, south = label_df['nodes_lat'].iloc[0], label_df['nodes_lat'].iloc[-1]
-    #     west, east = label_df['nodes_lon'].iloc[0], label_df['nodes_lon'].iloc[-1]
-    #     fig = plt.figure(figsize=(30, 6))
-    #     ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
-    #     ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
-    #     ax.coastlines(resolution='110m', linewidth=2)
-    #     ax.add_feature(cfeature.BORDERS, linestyle=':')
-
-    #     # Set the gridlines of the map 
-    #     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='gray', alpha=0.5, linestyle='--')
-    #     gl.top_labels = False
-    #     gl.right_labels = False
-    #     gl.xformatter = LongitudeFormatter()
-    #     gl.yformatter = LatitudeFormatter()
-    #     gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 20))
-    #     gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 10))
-    #     gl.xlabel_style = {'size': 20} 
-    #     gl.ylabel_style = {'size': 20}
-
-    #     # Get data for the plot and plot the clusters
-    #     n_clusters = len(np.unique(label_df['cluster']))
-    #     cmap = plt.cm.get_cmap('tab20', n_clusters)
-    #     scatter = ax.scatter(label_df['nodes_lon'].values, label_df['nodes_lat'].values, c=label_df['cluster'], cmap=cmap, s=400, transform=ccrs.PlateCarree())
-
-    #     # Add colorbar
-    #     bounds = np.arange(n_clusters + 1) - 0.5
-    #     cbar = plt.colorbar(scatter, ticks=np.arange(n_clusters), boundaries=bounds, ax=ax, orientation='vertical')
-    #     cbar.set_ticklabels(np.arange(n_clusters)+1)
-    #     cbar.ax.tick_params(labelsize=22)
-    #     cbar.set_label('Cluster',fontsize=26)
-
-    #     ax.set_title(label_file[7:-9], fontsize=30)
-
-    #     plt.tight_layout()
-    #     plt.show()
-
     # Load the solutione file in a DataFrame
     sol_file_df = pd.read_csv(sol_path, sep=' ', header=0)
 
@@ -134,18 +94,23 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     fig_board = ut.plot_board(board_best, column_names, feat_sel)
     fig_board.savefig(os.path.join(results_figure_dir, f'best_sol.pdf'), format='pdf', dpi=300)
 
-    ## Train MLPregressor with the best solution found ##
-    # Create dataset according to solution
+    # Create dataset according to solution and list the labels of the selected variables
     variable_selection = feat_sel.astype(int)
     time_sequences = sequence_length.astype(int)
     time_lags = final_sequence.astype(int)
+    label_selected_vars = []
     dataset_opt = target_df.copy()
     for c, col in enumerate(predictors_df.columns):
         if variable_selection[c] == 0 or time_sequences[c] == 0:
             continue
         for j in range(time_sequences[c]):
             dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
+            label_selected_vars.append(str(col) +'_lag'+ str(time_lags[c]+j))
 
+    # Plot the clusters selected for each atmospheric variable at each time lag
+    ut.plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_figure_dir)
+
+    ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years
     years = np.arange(start_year, end_year, 1)
     kfold = KFold(n_splits=n_folds)

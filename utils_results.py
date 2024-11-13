@@ -1,6 +1,12 @@
+import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
+import matplotlib.ticker as mticker
+from cartopy import crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
+import matplotlib.colors as mcolors
 
 # Function to create the board containing the information of the selected features
 def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
@@ -27,7 +33,7 @@ def plot_board(board, column_names, feat_sel):
     ax.set_yticks(np.arange(len(column_names)))
     ax.set_yticklabels(np.flip(np.asarray(column_names)), fontsize=11)
 
-    minor_locator = AutoMinorLocator(2)
+    minor_locator = mticker.AutoMinorLocator(2)
     ax.yaxis.set_minor_locator(minor_locator)
     ax.yaxis.grid(which='minor',color='black', linewidth=1)
     ax.xaxis.grid(which='minor',color='black', linewidth=1)
@@ -41,3 +47,84 @@ def plot_board(board, column_names, feat_sel):
 
     plt.tight_layout()
     return fig
+
+# Function to plot the clusters selected for each variable at each time lag
+def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_figure_dir):
+    # Create the subfolder of figure results to store the cluster selection figures
+    save_figure_dir = os.path.join(results_figure_dir, 'clusters_selected')
+    os.makedirs(save_figure_dir, exist_ok=True)
+    # Get the variable names from the selected variables
+    variables_with_cluster = [var for var in label_selected_vars if 'cluster' in var]
+    variable_names = [var.split('_cluster')[0] for var in variables_with_cluster]
+    variable_names = list(set(variable_names))
+    variable_names.sort()
+
+    for v, var in enumerate(variable_names):
+        # Load the labels file
+        label_file = f'labels_{var}.csv'
+        label_df = pd.read_csv(os.path.join(data_dir, label_file), index_col=0)
+        unique_clusters = np.arange(1, n_clusters+1)
+
+        # Define a color map with fixed colors for each cluster and map the clusters to the colors index
+        cmap = plt.get_cmap('tab20', n_clusters)
+        colors = cmap(np.linspace(0, 1, n_clusters))
+        full_cmap = mcolors.ListedColormap(colors)
+        norm = mcolors.BoundaryNorm(np.arange(n_clusters + 1) - 0.5, n_clusters)
+        cluster_to_color_index = {cluster: i for i, cluster in enumerate(unique_clusters)}
+
+        # Determine the clusters and corresponding lags selected for the variable
+        clusters_selected = np.asarray([int(long_name.split('_cluster')[1].split('_lag')[0]) 
+                                        for long_name in label_selected_vars if long_name.split('_cluster')[0] == var])
+        time_lags_selected = np.asarray([int(long_name.split('_lag')[1]) 
+                                        for long_name in label_selected_vars if long_name.split('_cluster')[0] == var])
+        
+        # Set the domain extension of the figures
+        north, south = label_df['nodes_lat'].iloc[0], label_df['nodes_lat'].iloc[-1]
+        west, east = label_df['nodes_lon'].iloc[0], label_df['nodes_lon'].iloc[-1]
+        
+        # Cycle through the lags and select the clusters for each lag
+        for lag in np.arange(2):
+            clusters_for_lag = clusters_selected[time_lags_selected == lag] 
+            # Plot the clusters for the selected variable and lag only if there are clusters selected
+            if len(clusters_for_lag) > 0:
+                # Select the rows of the label file that correspond to the selected clusters
+                label_df_selected = label_df[label_df['cluster'].isin(clusters_for_lag)]
+                
+                # Set the figure and gridlines of the map
+                fig = plt.figure(figsize=(30, 6))
+                ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+                ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
+                ax.coastlines(resolution='110m', linewidth=2)
+                ax.add_feature(cfeature.BORDERS, linestyle=':')
+                gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='gray', alpha=0.5, linestyle='--')
+                gl.top_labels = False
+                gl.right_labels = False
+                gl.xformatter = LongitudeFormatter()
+                gl.yformatter = LatitudeFormatter()
+                gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 20))
+                gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 10))
+                gl.xlabel_style = {'size': 20} 
+                gl.ylabel_style = {'size': 20}
+
+                # Plot only the selected clusters using their index in the full color map
+                scatter = ax.scatter(
+                    label_df_selected['nodes_lon'].values, 
+                    label_df_selected['nodes_lat'].values,
+                    c=[cluster_to_color_index[cluster] for cluster in label_df_selected['cluster']],
+                    cmap=full_cmap, norm=norm, s=400, transform=ccrs.PlateCarree()
+                )
+
+                # Create a colorbar showing all clusters
+                cbar = plt.colorbar(scatter, ax=ax, orientation='vertical', ticks=np.arange(n_clusters))
+                cbar.set_ticklabels(unique_clusters)
+                cbar.ax.tick_params(labelsize=22)
+                cbar.set_label('Cluster', fontsize=26)
+
+                ax.set_title(f'{var} - time lag: {lag}', fontsize=30)
+                plt.tight_layout()
+
+                # Save the figure
+                fig_name = f'{var}_lag{lag}_clusters_selected.pdf'
+                plt.savefig(os.path.join(save_figure_dir, fig_name), format='pdf', dpi=300)
+
+                plt.close()
