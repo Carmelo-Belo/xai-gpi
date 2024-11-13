@@ -125,6 +125,6 @@ def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_fi
 
                 # Save the figure
                 fig_name = f'{var}_lag{lag}_clusters_selected.pdf'
-                plt.savefig(os.path.join(save_figure_dir, fig_name), format='pdf', dpi=300)
+                plt.savefig(os.path.join(save_figure_dir, fig_name), format='pdf', bbox_inches='tight', dpi=300)
 
                 plt.close()
