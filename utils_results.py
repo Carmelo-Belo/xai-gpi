@@ -22,7 +22,7 @@ def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
 
 # Function to plot the board with the selected features, at which time lags and to higlight the non-selected features
 def plot_board(board, column_names, feat_sel):
-    fig, ax = plt.subplots(figsize=(5, 14))
+    fig, ax = plt.subplots(figsize=(5, np.rint(len(column_names) / 6)))
     ax.imshow(np.flip(board, axis=0), cmap='Blues', origin='lower', aspect='auto')
     
     ax.xaxis.set_label_position("top") 
