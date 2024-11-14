@@ -30,6 +30,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     output_dir = os.path.join(fs_dir, 'results', results_folder)
     sol_path = os.path.join(output_dir, sol_filename)
     # final_sol_path = os.path.join(output_dir, f'CRO_{sol_filename}')
+    best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
     data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)
@@ -47,14 +48,14 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     files_labels = [file for file in files_labels if file.startswith('label')]
     files_labels.sort()
 
-    # Load the solutione file in a DataFrame
+    # Load the solutions file in a DataFrame and the best solution found
     sol_file_df = pd.read_csv(sol_path, sep=' ', header=0)
+    best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
+    best_solution = best_solution.to_numpy().flatten()
 
-    # Find solutions with best performance both for Cross-Validation and Test metric
+    # Find the Cross-Validation and Test metric for the best solution found
     CVbest = sol_file_df['CV'].idxmin() # metric is mean squared error
     Testbest = sol_file_df['Test'].idxmin()
-    array_bestCV = np.fromstring(sol_file_df['Sol'][CVbest].replace('[', '').replace(']', '').replace('\n', ''), dtype=float, sep=' ')
-    array_bestTest = np.fromstring(sol_file_df['Sol'][Testbest].replace('[', '').replace(']', '').replace('\n', ''), dtype=float, sep=' ')
 
     # Plot the evolution of the metric for each solution found per evaluation
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -85,9 +86,9 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
 
     # Select the variables from the best solutions and plot it
     column_names = predictors_df.columns.tolist()
-    final_sequence = array_bestCV[len(column_names):2*len(column_names)]
-    sequence_length = array_bestCV[:len(column_names)]
-    feat_sel = array_bestCV[2*len(column_names):]
+    final_sequence = best_solution[len(column_names):2*len(column_names)]
+    sequence_length = best_solution[:len(column_names)]
+    feat_sel = best_solution[2*len(column_names):]
     n_rows = len(column_names)
     n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = ut.create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
