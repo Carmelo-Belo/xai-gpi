@@ -6,9 +6,8 @@ from PyCROSL.SubstrateInt import *
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
 from sklearn import preprocessing
-from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
 import warnings
 warnings.filterwarnings('ignore')
