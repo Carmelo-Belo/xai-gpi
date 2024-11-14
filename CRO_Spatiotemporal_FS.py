@@ -3,6 +3,8 @@ from PyCROSL.AbsObjectiveFunc import *
 from PyCROSL.SubstrateReal import *
 from PyCROSL.SubstrateInt import *
 
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
 from sklearn import preprocessing
 from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -39,7 +41,7 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
     output_dir = os.path.join(fs_dir, 'results', output_folder)
     os.makedirs(output_dir, exist_ok=True)
     indiv_path = os.path.join(output_dir, model_kind + '_' + experiment_filename)
-    solution_filename = 'CRO_' + model_kind + '_' + experiment_filename
+    solution_filename = 'CRO_' + model_kind + '_' + experiment_filename # this file stores the last solution found by the algorithm
 
     # Create an empty file to store the solutions provided by the algorithm
     sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
@@ -109,7 +111,7 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
             X_test=test_dataset[test_dataset.columns.drop([Y_column]) ]
             Y_test=test_dataset[Y_column]
                 
-            scaler = preprocessing.StandardScaler()
+            scaler = preprocessing.MinMaxScaler()
             X_std_train = scaler.fit(X_train)
             X_std_train = scaler.transform(X_train)
             X_std_test = scaler.transform(X_test)
@@ -119,54 +121,27 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
             # Train model
             if model_kind == 'LinReg':
                 clf = LinearRegression()
-                # Apply cross validation
-                score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
-                clf.fit(X_train, Y_train)
-                Y_pred = clf.predict(X_test)
-                mse = mean_squared_error(Y_test, Y_pred)
-                r2 = r2_score(Y_test, Y_pred)
-                print(f"Cross-validated MSE: {-score.mean()}")  # Negated to report positive MSE
-                print(f"Test MSE: {mse}, Test R^2: {r2}")
-                # Prepare solution to save
-                sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
-            elif model_kind == 'LogReg':
-                clf = LogisticRegression() # -> gives Nan in the mean score of cross validation
-                # Apply cross validation
-                score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='f1')
-                clf.fit(X_train, Y_train)
-                Y_pred = clf.predict(X_test)
-                f1_test = f1_score(Y_pred, Y_test, average='weighted')
-                print(f"Cross-validated F1: {score.mean()}")
-                print(f"Test F1: {f1_test}")
-                # Prepare solution to save
-                sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [score.mean()], 'Test': [f1_test], 'Sol': [solution]})], ignore_index=True)
-            elif model_kind == 'MLPReg':
-                n_predictors = X_train.shape[1]
-                clf = MLPRegressor(
-                    hidden_layer_sizes=(n_predictors*2, n_predictors),
-                    activation='relu',
-                    solver='adam',
-                    alpha=0.0001,
-                    batch_size=32,
-                    shuffle=True,   
-                )
-                # Apply cross validation
-                score = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
-                clf.fit(X_train, Y_train)
-                Y_pred = clf.predict(X_test)
-                mse = mean_squared_error(Y_test, Y_pred)
-                r2 = r2_score(Y_test, Y_pred)
-                print(f"Cross-validated MSE: {-score.mean()}")
-                print(f"Test MSE: {mse}, Test R^2: {r2}")
-                # Prepare solution to save
-                sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-score.mean()], 'Test': [mse], 'Sol': [solution]})], ignore_index=True)
+            elif model_kind == 'LGBM':
+                clf = LGBMRegressor()
+            elif model_kind == 'XGB':
+                clf = XGBRegressor()
             else:
                 raise ValueError("Model kind not recognized")
+            # Apply cross validation
+            cv_scores = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
+            clf.fit(X_train, Y_train)
+            Y_pred = clf.predict(X_test)
+            test_mse = mean_squared_error(Y_test, Y_pred)
+            test_r2 = r2_score(Y_test, Y_pred)
+            print(f"Cross-validated MSE: {-cv_scores.mean()}")  # Negated to report positive MSE
+            print(f"Test MSE: {test_mse}, Test R^2: {test_r2}")
+            # Prepare solution to save
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-cv_scores.mean()], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
 
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             
-            return 1/score.mean()
+            return 1/cv_scores.mean()
         
         """
         This will be the function used to generate random vectors for the initialization of the algorithm
