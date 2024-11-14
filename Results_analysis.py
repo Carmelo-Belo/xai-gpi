@@ -149,7 +149,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         Y_train = train_dataset[Y_column]
         X_test_fold = test_dataset[test_dataset.columns.drop([Y_column])]
         Y_test_fold = test_dataset[Y_column]
-        scaler = preprocessing.StandardScaler()
+        scaler = preprocessing.MinMaxScaler()
         X_std_train = scaler.fit(X_train)
         X_std_train = scaler.transform(X_train)
         X_std_test = scaler.transform(X_test_fold)

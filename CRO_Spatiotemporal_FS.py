@@ -49,7 +49,7 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
 
     # Split the dataset into train and test
     train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
-    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
+    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year < test_yearF)
 
     """
     All the following methods will have to be implemented for the algorithm to work properly with the same inputs, except for the constructor 
@@ -80,7 +80,6 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
         This will be the objective function, that will recieve a vector and output a number
         """
         def objective(self, solution):
-            # print(solution)
             # Read data
             sol_file = pd.read_csv(indiv_path, sep=' ', header=0)
 
@@ -133,8 +132,8 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
             Y_pred = clf.predict(X_test)
             test_mse = mean_squared_error(Y_test, Y_pred)
             test_r2 = r2_score(Y_test, Y_pred)
-            print(f"Cross-validated MSE: {-cv_scores.mean()}")  # Negated to report positive MSE
-            print(f"Test MSE: {test_mse}, Test R^2: {test_r2}")
+            # print(f"Cross-validated MSE: {-cv_scores.mean()}")  # Negated to report positive MSE
+            # print(f"Test MSE: {test_mse}, Test R^2: {test_r2}")
             # Prepare solution to save
             sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-cv_scores.mean()], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
 
@@ -221,8 +220,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--model_kind', type=str, help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin')
-    parser.add_argument('--model_kind', type=str, default='LinReg', help='ML model to train for the computation fo the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
