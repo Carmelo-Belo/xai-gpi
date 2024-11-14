@@ -3,11 +3,6 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-import matplotlib.ticker as mticker
-from matplotlib.ticker import AutoMinorLocator
-from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers.legacy import Adam
