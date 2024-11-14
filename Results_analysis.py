@@ -84,6 +84,17 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     plt.tight_layout()
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_scatter.pdf'), format='pdf', dpi=300)
 
+    # Compute correlations between the candidate variabels and the target variable
+    years = np.arange(start_year, end_year, 1)
+    filtered_target_df = target_df.loc[target_df.index.year.isin(years)]
+    series1 = filtered_target_df['tcg'].to_numpy()
+    filtered_predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
+    correlations = []
+    for v, var in enumerate(predictors_df.columns):
+        series2 = filtered_predictors_df.loc[:, var].to_numpy()
+        corr, _ = pearsonr(series1, series2)
+        correlations.append(corr)
+
     # Select the variables from the best solutions and plot it
     column_names = predictors_df.columns.tolist()
     final_sequence = best_solution[len(column_names):2*len(column_names)]
@@ -92,7 +103,10 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     n_rows = len(column_names)
     n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = ut.create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
-    fig_board = ut.plot_board(board_best, column_names, feat_sel)
+    if model_kind == 'LinReg':
+        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations, corr_report=True)
+    else:
+        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations)
     fig_board.savefig(os.path.join(results_figure_dir, f'best_sol.pdf'), format='pdf', dpi=300)
 
     # Create dataset according to solution and list the labels of the selected variables
@@ -113,7 +127,6 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
 
     ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years
-    years = np.arange(start_year, end_year, 1)
     kfold = KFold(n_splits=n_folds)
     Y_column = 'tcg' # Target variable
     obs_indices = dataset_opt.index.year.isin(years)

@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
-import matplotlib.colors as mcolors
 
 # Function to create the board containing the information of the selected features
 def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
@@ -20,10 +20,20 @@ def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
     
     return board
 
-# Function to plot the board with the selected features, at which time lags and to higlight the non-selected features
-def plot_board(board, column_names, feat_sel):
-    fig, ax = plt.subplots(figsize=(5, np.rint(len(column_names) / 6)))
-    ax.imshow(np.flip(board, axis=0), cmap='Blues', origin='lower', aspect='auto')
+# Functions to plot the board with the selected features, at which time lags and to higlight the non-selected features
+# It also displays the correlation between the features and the target if requested
+def get_text_color(background_color):
+    # Calculate brightness (luminance) of the background color
+    r, g, b = background_color[:3]  # Ignore alpha if present
+    brightness = 0.299 * r + 0.587 * g + 0.114 * b  # Standard luminance calculation
+    # Return white text if brightness is low, black if high
+    return 'white' if brightness < 0.5 else 'black'
+
+def plot_board(board, column_names, feat_sel, correlations, corr_report=False):
+    fig, ax = plt.subplots(figsize=(5, np.rint(len(column_names) / 5)))
+    cmap = plt.get_cmap('Blues')
+    norm = mcolors.Normalize(vmin=np.min(board), vmax=np.max(board))
+    ax.imshow(np.flip(board, axis=0), cmap=cmap, origin='lower', aspect='auto')
     
     ax.xaxis.set_label_position("top") 
     ax.xaxis.tick_top()
@@ -40,9 +50,16 @@ def plot_board(board, column_names, feat_sel):
     ax.set_xlabel('Time lags (months)', fontsize=15)
 
     for i in range(board.shape[0]):
-        pos = board.shape[0] - i - 1.5
+        pos = board.shape[0] - i
+        if corr_report:
+            # Get the background color for the specific cell
+            cell_value = board[i, 0]  # Assuming correlation text is on the first column
+            background_color = cmap(norm(cell_value))
+            text_color = get_text_color(background_color)
+            # Add text with dynamic color
+            ax.text(-0.1, pos - 1.25, f'{correlations[i]:.2f}', fontsize=10, color=text_color)
         if feat_sel[i] == 0:
-            rect = plt.Rectangle((- 0.5, pos), 1, 1, color='red')
+            rect = plt.Rectangle((-0.5, pos - 1.5), 1, 1, color='red')
             ax.add_patch(rect)
 
     plt.tight_layout()

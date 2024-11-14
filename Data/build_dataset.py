@@ -17,7 +17,12 @@ def main(basin, n_clusters, res, first_year, last_year):
     # Folder to save the dataset
     save_path = cluster_path
 
-    dataset, target = build_dataset(cluster_variables, n_clusters, climate_indexes, cluster_path, indexes_path, target_path, first_year, last_year, save_path, month_col=True)
+    # Build the dataset and save it to file
+    dataset, target = build_dataset(cluster_variables, climate_indexes, cluster_path, indexes_path, target_path, first_year, last_year, month_col=True)
+    dataset_filename = f'predictors_{first_year}-{last_year}_{n_clusters}clusters_{len(cluster_variables)}vars_{len(climate_indexes)}idxs.csv'
+    dataset.to_csv(os.path.join(save_path, dataset_filename))
+    target_filename = f'target_{first_year}-{last_year}_2.5x2.5.csv'
+    target.to_csv(os.path.join(save_path, target_filename))
 
 
 if __name__ == '__main__':
