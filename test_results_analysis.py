@@ -3,9 +3,9 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers.legacy import Adam
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.optimizers.legacy import Adam
 from sklearn.model_selection import train_test_split, KFold
 from sklearn import preprocessing
 from scipy.stats import pearsonr
