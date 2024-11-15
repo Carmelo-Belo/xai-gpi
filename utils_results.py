@@ -174,4 +174,5 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
     ax.set_ylabel('Loss')
     ax.legend()
     plt.tight_layout()
+    plt.close()
     return fig
