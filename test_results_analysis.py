@@ -165,10 +165,10 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         X_train = pd.DataFrame(X_std_train, columns=X_train.columns, index=X_train.index)
         X_test = pd.DataFrame(X_std_test, columns=X_test_fold.columns, index=X_test_fold.index)
         # Standardize the entire dataset
-        X_train_noFS = train_dataset_noFS[train_dataset_noFS.columns.drop([Y_column])]
-        Y_train_noFS = train_dataset_noFS[Y_column]
-        X_test_fold_noFS = test_dataset_noFS[test_dataset_noFS.columns.drop([Y_column])]
-        Y_test_fold_noFS = test_dataset_noFS[Y_column]
+        X_train_noFS = train_dataset_noFS
+        Y_train_noFS = Y_train
+        X_test_fold_noFS = test_dataset_noFS
+        Y_test_fold_noFS = Y_test_fold
         scaler_noFS = preprocessing.MinMaxScaler()
         X_std_train_noFS = scaler_noFS.fit(X_train_noFS)
         X_std_train_noFS = scaler_noFS.transform(X_train_noFS)
@@ -216,8 +216,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         ## XGBoost ##
         # Build, compile and train the xgboost regressor for the optimized dataset
         xgboost = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror')
-        evals_result = {} # dictionary to store the evaluation results
-        xgboost.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_metric='mse', early_stopping_rounds=10, verbose=False, evals_result=evals_result)
+        xgboost.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], verbose=False)
         Y_pred_fold_xgb = xgboost.predict(X_test)
         Y_pred_fold_xgb = pd.DataFrame(Y_pred_fold_xgb, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_XGB = pd.concat([Y_pred_XGB, Y_pred_fold_xgb])
@@ -225,21 +224,21 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         loss_xgb = root_mean_squared_error(Y_test_fold, Y_pred_fold_xgb)
         # Build, compile and train the xgboost regressor for the entire dataset
         xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror')
-        evals_result_noFS = {} # dictionary to store the evaluation results
-        xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], eval_metric='mse', early_stopping_rounds=10, verbose=False, evals_result=evals_result_noFS)
+        xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], verbose=False)
         Y_pred_fold_xgb_noFS = xgboost_noFS.predict(X_test_noFS)
         Y_pred_fold_xgb_noFS = pd.DataFrame(Y_pred_fold_xgb_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_XGB_noFS = pd.concat([Y_pred_XGB_noFS, Y_pred_fold_xgb_noFS])
         # Evaluate the model for the entire dataset
         loss_xgb_noFS = root_mean_squared_error(Y_test_fold_noFS, Y_pred_fold_xgb_noFS)
         # Plot the training and validation loss for the 2 models
-        fig = ut.plot_train_val_loss(evals_result['validation_0']['mse'], evals_result['validation_1']['mse'], evals_result_noFS['validation_0']['mse'], evals_result_noFS['validation_1']['mse'], loss_xgb, loss_xgb_noFS)
+        fig = ut.plot_train_val_loss(xgboost.evals_result_['validation_0']['rmse'], xgboost.evals_result_['validation_1']['rmse'],
+                                    xgboost_noFS.evals_result_['validation_0']['rmse'], xgboost_noFS.evals_result_['validation_1']['rmse'], loss_xgb, loss_xgb_noFS)
         fig.savefig(os.path.join(loss_figure_dir, f'XGB_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
 
         ## LightGBM ##
         # Build, compile and train the lightgbm regressor for the optimized dataset
         lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression')
-        lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_metric='mse', verbose=False)
+        lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)])
         Y_pred_fold_lgbm = lgbm.predict(X_test)
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_LGBM = pd.concat([Y_pred_LGBM, Y_pred_fold_lgbm])
@@ -247,14 +246,15 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         loss_lgbm = root_mean_squared_error(Y_test_fold, Y_pred_fold_lgbm)
         # Build, compile and train the lightgbm regressor for the entire dataset
         lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression')
-        lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], eval_metric='mse', verbose=False)
+        lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)])
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_LGBM_noFS = pd.concat([Y_pred_LGBM_noFS, Y_pred_fold_lgbm_noFS])
         # Evaluate the model for the entire dataset
         loss_lgbm_noFS = root_mean_squared_error(Y_test_fold_noFS, Y_pred_fold_lgbm_noFS)
         # Plot the training and validation loss for the 2 models
-        fig = ut.plot_train_val_loss(lgbm.evals_result_['training']['mse'], lgbm.evals_result_['valid_1']['mse'], lgbm_noFS.evals_result_['training']['mse'], lgbm_noFS.evals_result_['valid_1']['mse'], loss_lgbm, loss_lgbm_noFS)
+        fig = ut.plot_train_val_loss(lgbm.evals_result_['training']['l2'], lgbm.evals_result_['valid_1']['l2'], 
+                                    lgbm_noFS.evals_result_['training']['l2'], lgbm_noFS.evals_result_['valid_1']['l2'], loss_lgbm, loss_lgbm_noFS)
         fig.savefig(os.path.join(loss_figure_dir, f'LGBM_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
 
     # Compare observations to predictions
