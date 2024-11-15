@@ -4,11 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
+import matplotlib.gridspec as gridspec
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
 
-# Function to create the board containing the information of the selected features
+# Function to create a board containing the information of the selected features
 def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
     board = np.zeros((n_rows, n_cols))
 
@@ -19,6 +20,19 @@ def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
             board[i, start_index:end_index] = 1
     
     return board
+
+# Function to create a dataframe containing the information of the selected features
+# First columns are the names of the features, then each followgin column is a time lag
+def df_selected_vars(predictors_df, best_solution):
+    column_names = predictors_df.columns.to_list()
+    final_sequence = best_solution[len(column_names):2*len(column_names)]
+    sequence_length = best_solution[:len(column_names)]
+    feat_sel = best_solution[2*len(column_names):]
+    n_rows = len(column_names)
+    n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
+    board_best = create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
+    df = pd.DataFrame({'column_names': column_names, 'lag_0': board_best[:, 0], 'lag_1': board_best[:, 1]})
+    return df
 
 # Functions to plot the board with the selected features, at which time lags and to higlight the non-selected features
 # It also displays the correlation between the features and the target if requested
