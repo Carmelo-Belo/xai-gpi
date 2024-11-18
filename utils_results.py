@@ -24,6 +24,7 @@ def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
 # Function to create a dataframe containing the information of the selected features
 # First columns are the names of the features, then each followgin column is a time lag
 def df_selected_vars(predictors_df, best_solution):
+    best_solution = best_solution.to_numpy().flatten()
     column_names = predictors_df.columns.to_list()
     final_sequence = best_solution[len(column_names):2*len(column_names)]
     sequence_length = best_solution[:len(column_names)]
@@ -176,3 +177,76 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
     plt.tight_layout()
     plt.close()
     return fig
+
+# Function to plot the spyder plots on the variables selection across different experiments
+def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+    # Set figure and grid for plotting 
+    fig = plt.figure(figsize=(15,15))
+    gs = gridspec.GridSpec(3, 3)
+    # Get the number of experiments for computing percentages + define cluster strings for axes
+    experiments_considered = len(experiments_folders)
+    cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
+
+    # Plot the spyder plots for each atmospheric variable 
+    for i, var in enumerate(atm_vars):
+        vars_cluster = [f'{var}_{cluster}' for cluster in cluster_strings]
+        # Get the information of number of times the variable was selected for each cluster
+        selected_vars_df = selected_vars_df_list[0]
+        var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(vars_cluster)]
+        for seleceted_vars_df in selected_vars_df_list[1:]:
+            sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_cluster)]
+            var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
+        # Compute the percentage of selection if requested
+        if display_percentage:
+            var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
+        # Plot in the spyder plot
+        ax = fig.add_subplot(gs[i], polar=True)
+        values_lag_0 = var_selection_info['lag_0'].to_numpy()
+        values_lag_1 = var_selection_info['lag_1'].to_numpy()
+        angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
+        values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
+        values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
+        angles += angles[:1]
+        ax.plot(angles, values_lag_0, linewidth=4, linestyle='solid', label='lag_0')
+        ax.fill(angles, values_lag_0, alpha=0.1)
+        ax.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', label='lag_1')
+        ax.fill(angles, values_lag_1, alpha=0.1)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+        if not display_percentage:
+            ax.set_yticks(np.arange(experiments_considered+1)[::2])
+            ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
+        ax.set_title(f'{var}', fontsize=18, fontweight='bold')
+    
+    # Plot the spyder plots for the non-cluster variables
+    selected_vars_df = selected_vars_df_list[0]
+    var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(idx_vars)]
+    for seleceted_vars_df in selected_vars_df_list[1:]:
+        sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(idx_vars)]
+        var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
+    var_selection_info 
+    # Compute the percentage of selection if requested
+    if display_percentage:
+        var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
+    # Plot in the spyder plot
+    ax = fig.add_subplot(gs[i+1], polar=True)
+    values_lag_0 = var_selection_info['lag_0'].to_numpy()
+    values_lag_1 = var_selection_info['lag_1'].to_numpy()
+    angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
+    values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
+    values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
+    angles += angles[:1]
+    ax.plot(angles, values_lag_0, linewidth=4, linestyle='solid', label='lag_0')
+    ax.fill(angles, values_lag_0, alpha=0.1)
+    ax.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', label='lag_1')
+    ax.fill(angles, values_lag_1, alpha=0.1)
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
+    if not display_percentage:
+        ax.set_yticks(np.arange(experiments_considered+1)[::2])
+        ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
+    ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
+
+    plt.tight_layout()
