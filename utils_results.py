@@ -32,7 +32,9 @@ def df_selected_vars(predictors_df, best_solution):
     n_rows = len(column_names)
     n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
-    df = pd.DataFrame({'column_names': column_names, 'lag_0': board_best[:, 0], 'lag_1': board_best[:, 1]})
+    df = pd.DataFrame({'column_names': column_names})
+    for i in range(n_cols):
+        df[f'lag_{i}'] = board_best[:, i]
     return df
 
 # Functions to plot the board with the selected features, at which time lags and to higlight the non-selected features
@@ -186,15 +188,19 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
     # Get the number of experiments for computing percentages + define cluster strings for axes
     experiments_considered = len(experiments_folders)
     cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
+    all_vars = atm_vars + idx_vars
 
     # Plot the spyder plots for each atmospheric variable 
-    for i, var in enumerate(atm_vars):
-        vars_cluster = [f'{var}_{cluster}' for cluster in cluster_strings]
+    for i, var in enumerate(all_vars):
+        if var in atm_vars:
+            vars_selected = [f'{var}_{cluster}' for cluster in cluster_strings]
+        else:
+            vars_selected = idx_vars
         # Get the information of number of times the variable was selected for each cluster
         selected_vars_df = selected_vars_df_list[0]
-        var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(vars_cluster)]
+        var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(vars_selected)]
         for seleceted_vars_df in selected_vars_df_list[1:]:
-            sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_cluster)]
+            sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_selected)]
             var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
         # Compute the percentage of selection if requested
         if display_percentage:
@@ -211,42 +217,128 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
         ax.fill(angles, values_lag_0, alpha=0.1)
         ax.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', label='lag_1')
         ax.fill(angles, values_lag_1, alpha=0.1)
+        # Set plots properties
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+        if var in atm_vars:
+            ax.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+            ax.set_title(f'{var}', fontsize=18, fontweight='bold')
+        else:
+            ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
+            ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
         if not display_percentage:
             ax.set_yticks(np.arange(experiments_considered+1)[::2])
             ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
         ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
-        ax.set_title(f'{var}', fontsize=18, fontweight='bold')
-    
-    # Plot the spyder plots for the non-cluster variables
-    selected_vars_df = selected_vars_df_list[0]
-    var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(idx_vars)]
-    for seleceted_vars_df in selected_vars_df_list[1:]:
-        sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(idx_vars)]
-        var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
-    var_selection_info 
-    # Compute the percentage of selection if requested
-    if display_percentage:
-        var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
-    # Plot in the spyder plot
-    ax = fig.add_subplot(gs[i+1], polar=True)
-    values_lag_0 = var_selection_info['lag_0'].to_numpy()
-    values_lag_1 = var_selection_info['lag_1'].to_numpy()
-    angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
-    values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
-    values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
-    angles += angles[:1]
-    ax.plot(angles, values_lag_0, linewidth=4, linestyle='solid', label='lag_0')
-    ax.fill(angles, values_lag_0, alpha=0.1)
-    ax.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', label='lag_1')
-    ax.fill(angles, values_lag_1, alpha=0.1)
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
-    if not display_percentage:
-        ax.set_yticks(np.arange(experiments_considered+1)[::2])
-        ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
-    ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
 
-    plt.tight_layout()
+    fig.set_tight_layout(True)
+    plt.close()
+    return fig
+
+# Function to plot the spyder plots on the variables selection across different experiments and showing the selection for each model
+def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+    # Set figure and grid for plotting 
+    fig1 = plt.figure(figsize=(16,16))
+    gs1 = gridspec.GridSpec(3, 3, figure=fig1)
+    fig2 = plt.figure(figsize=(16,16))
+    gs2 = gridspec.GridSpec(3, 3, figure=fig2)
+    # Get the number of experiments for computing percentages + define cluster strings for axes
+    experiments_considered = len(experiments_folders)
+    cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
+    all_vars = atm_vars + idx_vars
+
+    # Plot the spyder plots for each atmospheric variable 
+    for i, var in enumerate(all_vars):
+        if var in atm_vars:
+            vars_selected = [f'{var}_{cluster}' for cluster in cluster_strings]
+        else:
+            vars_selected = idx_vars
+        # Get the information of number of times the variable was selected for each cluster
+        selected_vars_df = selected_vars_df_list[0]
+        var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(vars_selected)]
+        var_selection_info.iloc[:,1:] = 0.0
+        # Create dataframe with the information for each model
+        var_selection_info_LinReg = var_selection_info.copy()
+        var_selection_info_LGBM = var_selection_info.copy()
+        var_selection_info_XGB = var_selection_info.copy()
+        for s, seleceted_vars_df in enumerate(selected_vars_df_list):
+            # Add the information of the selection for each model to the dataframe
+            sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_selected)]
+            var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
+            # Add the information of the selection for each model separetely
+            if 'LinReg' in experiments_folders[s]:
+                var_selection_info_LinReg.iloc[:,1:] = (var_selection_info_LinReg.iloc[:,1:] + sel_info.iloc[:,1:])
+            elif 'LGBM' in experiments_folders[s]:
+                var_selection_info_LGBM.iloc[:,1:] = (var_selection_info_LGBM.iloc[:,1:] + sel_info.iloc[:,1:])
+            elif 'XGB' in experiments_folders[s]:
+                var_selection_info_XGB.iloc[:,1:] = (var_selection_info_XGB.iloc[:,1:] + sel_info.iloc[:,1:])
+            else:
+                raise ValueError('Model not recognized')
+        # Compute the percentage of selection if requested
+        if display_percentage:
+            var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
+            var_selection_info_LinReg.iloc[:,1:] = var_selection_info_LinReg.iloc[:,1:] / experiments_considered * 100
+            var_selection_info_LGBM.iloc[:,1:] = var_selection_info_LGBM.iloc[:,1:] / experiments_considered * 100
+            var_selection_info_XGB.iloc[:,1:] = var_selection_info_XGB.iloc[:,1:] / experiments_considered * 100
+        # Plot in the spyder plot
+        ax1 = fig1.add_subplot(gs1[i], polar=True)
+        ax2 = fig2.add_subplot(gs2[i], polar=True)
+        # All models
+        values_lag_0 = var_selection_info['lag_0'].to_numpy()
+        values_lag_1 = var_selection_info['lag_1'].to_numpy()
+        values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
+        values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
+        angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
+        angles += angles[:1]
+        ax1.plot(angles, values_lag_0, linewidth=4, linestyle='solid', color='red', label='All')
+        ax2.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', color='midnightblue', label='All')
+        # LinReg
+        values_lag_0_LinReg = var_selection_info_LinReg['lag_0'].to_numpy()
+        values_lag_1_LinReg = var_selection_info_LinReg['lag_1'].to_numpy()
+        values_lag_0_LinReg = np.concatenate((values_lag_0_LinReg,[values_lag_0_LinReg[0]]))
+        values_lag_1_LinReg = np.concatenate((values_lag_1_LinReg,[values_lag_1_LinReg[0]]))
+        ax1.fill(angles, values_lag_0_LinReg, color='coral', label='LinReg')
+        ax2.fill(angles, values_lag_1_LinReg, color='cornflowerblue', label='LinReg')
+        # LGBM
+        values_lag_0_LGBM = var_selection_info_LGBM['lag_0'].to_numpy() + var_selection_info_LinReg['lag_0'].to_numpy()
+        values_lag_1_LGBM = var_selection_info_LGBM['lag_1'].to_numpy() + var_selection_info_LinReg['lag_1'].to_numpy()
+        values_lag_0_LGBM = np.concatenate((values_lag_0_LGBM,[values_lag_0_LGBM[0]]))
+        values_lag_1_LGBM = np.concatenate((values_lag_1_LGBM,[values_lag_1_LGBM[0]]))
+        ax1.fill_between(angles, values_lag_0_LinReg, values_lag_0_LGBM, color='tomato', label='LGBM')
+        ax2.fill_between(angles, values_lag_1_LinReg, values_lag_1_LGBM, color='royalblue', label='LGBM')
+        # XGB
+        values_lag_0_XGB = var_selection_info_XGB['lag_0'].to_numpy() + var_selection_info_LGBM['lag_0'].to_numpy() + var_selection_info_LinReg['lag_0'].to_numpy()
+        values_lag_1_XGB = var_selection_info_XGB['lag_1'].to_numpy() + var_selection_info_LGBM['lag_1'].to_numpy() + var_selection_info_LinReg['lag_1'].to_numpy()
+        values_lag_0_XGB = np.concatenate((values_lag_0_XGB,[values_lag_0_XGB[0]]))
+        values_lag_1_XGB = np.concatenate((values_lag_1_XGB,[values_lag_1_XGB[0]]))
+        ax1.fill_between(angles, values_lag_0_LGBM, values_lag_0_XGB, color='orangered', label='XGB')
+        ax2.fill_between(angles, values_lag_1_LGBM, values_lag_1_XGB, color='blue', label='XGB')
+        # Set plots properties
+        ax1.set_xticks(angles[:-1])
+        ax2.set_xticks(angles[:-1])
+        if var in atm_vars:
+            ax1.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+            ax2.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+            ax1.set_title(f'{var}', fontsize=18, fontweight='bold')
+            ax2.set_title(f'{var}', fontsize=18, fontweight='bold')
+        else:
+            ax1.set_xticklabels(var_selection_info['column_names'], fontsize=16)
+            ax2.set_xticklabels(var_selection_info['column_names'], fontsize=16)
+            ax1.set_title(f'No cluster var', fontsize=18, fontweight='bold')
+            ax2.set_title(f'No cluster var', fontsize=18, fontweight='bold')
+        if not display_percentage:
+            ax1.set_yticks(np.arange(experiments_considered+1)[::2])
+            ax1.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
+            ax2.set_yticks(np.arange(experiments_considered+1)[::2])
+            ax2.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
+        ax1.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
+        ax2.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
+
+        if var in idx_vars:
+            break
+
+    fig1.set_tight_layout(True)
+    fig2.set_tight_layout(True)
+    plt.close(fig1)
+    plt.close(fig2)
+
+    return fig1, fig2
