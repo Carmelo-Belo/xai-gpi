@@ -182,9 +182,10 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
 
 # Function to plot the spyder plots on the variables selection across different experiments
 def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
-    # Set figure and grid for plotting 
+    # Set figure and grid for plotting
+    lags_number = len(selected_vars_df_list[0].columns) - 1
     fig = plt.figure(figsize=(15,15))
-    gs = gridspec.GridSpec(3, 3)
+    gs = gridspec.GridSpec(3, 3, figure=fig)
     # Get the number of experiments for computing percentages + define cluster strings for axes
     experiments_considered = len(experiments_folders)
     cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
@@ -205,18 +206,15 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
         # Compute the percentage of selection if requested
         if display_percentage:
             var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
-        # Plot in the spyder plot
+        # Plot in the spyder plot according to the number of lags
         ax = fig.add_subplot(gs[i], polar=True)
-        values_lag_0 = var_selection_info['lag_0'].to_numpy()
-        values_lag_1 = var_selection_info['lag_1'].to_numpy()
-        angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
-        values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
-        values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
-        angles += angles[:1]
-        ax.plot(angles, values_lag_0, linewidth=4, linestyle='solid', label='lag_0')
-        ax.fill(angles, values_lag_0, alpha=0.1)
-        ax.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', label='lag_1')
-        ax.fill(angles, values_lag_1, alpha=0.1)
+        for l in range(lags_number):
+            values = var_selection_info[f'lag_{l}'].to_numpy()
+            angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
+            values = np.concatenate((values,[values[0]]))
+            angles += angles[:1]
+            ax.plot(angles, values, linewidth=4, linestyle='solid', label=f'lag_{l}')
+            ax.fill(angles, values, alpha=0.1)
         # Set plots properties
         ax.set_xticks(angles[:-1])
         if var in atm_vars:
@@ -241,11 +239,14 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
 
 # Function to plot the spyder plots on the variables selection across different experiments and showing the selection for each model
 def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
-    # Set figure and grid for plotting 
-    fig1 = plt.figure(figsize=(16,16))
-    gs1 = gridspec.GridSpec(3, 3, figure=fig1)
-    fig2 = plt.figure(figsize=(16,16))
-    gs2 = gridspec.GridSpec(3, 3, figure=fig2)
+    # Set figure and grid for plotting
+    lags_number = len(selected_vars_df_list[0].columns) - 1
+    figs = []
+    gs = []
+    for lag in range(lags_number):
+        fig = plt.figure(figsize=(16,16))
+        figs.append(fig)
+        gs.append(gridspec.GridSpec(3, 3), figure=fig)
     # Get the number of experiments for computing percentages + define cluster strings for axes
     experiments_considered = len(experiments_folders)
     cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
@@ -288,14 +289,8 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
         ax1 = fig1.add_subplot(gs1[i], polar=True)
         ax2 = fig2.add_subplot(gs2[i], polar=True)
         # All models
-        values_lag_0 = var_selection_info['lag_0'].to_numpy()
-        values_lag_1 = var_selection_info['lag_1'].to_numpy()
-        values_lag_0 = np.concatenate((values_lag_0,[values_lag_0[0]]))
-        values_lag_1 = np.concatenate((values_lag_1,[values_lag_1[0]]))
         angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
         angles += angles[:1]
-        ax1.plot(angles, values_lag_0, linewidth=4, linestyle='solid', color='red', label='All')
-        ax2.plot(angles, values_lag_1, linewidth=4, linestyle='dashed', color='midnightblue', label='All')
         # LinReg
         values_lag_0_LinReg = var_selection_info_LinReg['lag_0'].to_numpy()
         values_lag_1_LinReg = var_selection_info_LinReg['lag_1'].to_numpy()
