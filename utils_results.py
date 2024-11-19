@@ -225,13 +225,18 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
         else:
             ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
             ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
-        if not display_percentage:
+        if display_percentage:
+            ax.set_yticks(np.arange(101)[::10])
+            ax.set_yticklabels((np.arange(101)[::10]), fontsize=12)
+        else:
             ax.set_yticks(np.arange(experiments_considered+1)[::2])
             ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
         ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
 
+        if var in idx_vars:
+            break
+
     fig.set_tight_layout(True)
-    plt.close()
     return fig
 
 # Function to plot the spyder plots on the variables selection across different experiments and showing the selection for each model
@@ -325,7 +330,12 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
             ax2.set_xticklabels(var_selection_info['column_names'], fontsize=16)
             ax1.set_title(f'No cluster var', fontsize=18, fontweight='bold')
             ax2.set_title(f'No cluster var', fontsize=18, fontweight='bold')
-        if not display_percentage:
+        if display_percentage:
+            ax1.set_yticks(np.arange(101)[::10])
+            ax1.set_yticklabels((np.arange(101)[::10]), fontsize=12)
+            ax2.set_yticks(np.arange(101)[::10])
+            ax2.set_yticklabels((np.arange(101)[::10]), fontsize=12)
+        else:
             ax1.set_yticks(np.arange(experiments_considered+1)[::2])
             ax1.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
             ax2.set_yticks(np.arange(experiments_considered+1)[::2])
@@ -338,7 +348,4 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
 
     fig1.set_tight_layout(True)
     fig2.set_tight_layout(True)
-    plt.close(fig1)
-    plt.close(fig2)
-
     return fig1, fig2
