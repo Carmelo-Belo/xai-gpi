@@ -5,11 +5,13 @@ from utils_dataset import build_dataset
 def main(basin, n_clusters, res, first_year, last_year):
     # List of variables to include for the feature selection process
     # cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 'w']
-    cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r400', 'r600', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 'vws_u600-250', 'vws_u850-200', 'vws_v600-250', 'vws_v850-200', 'mgu850', 'mgu600', 'mgv850', 'mgv600', 'zgu850', 'zgu600', 'zgv850', 'zgv600', 'w']
+    # cluster_variables = ['abs_vo600', 'abs_vo850', 'mpi', 'msl', 'r400', 'r600', 'r700', 'r850', 'ssta20', 'ssta30', 'sst', 'vo600', 'vo850', 'vws600-250', 'vws850-200', 
+    #                      'vws_u600-250', 'vws_u850-200', 'vws_v600-250', 'vws_v850-200', 'mgu850', 'mgu600', 'mgv850', 'mgv600', 'zgu850', 'zgu600', 'zgv850', 'zgv600', 'w']
+    cluster_variables = ['abs_vo850', 'mpi', 'msl', 'r700', 'sst', 'vws850-200', 'w']
     climate_indexes = ['EA-WR', 'ENSO3.4', 'EP-NP', 'NAO', 'PDO', 'PNA', 'SOI', 'TNA', 'TSA', 'WP']
 
     # Directories to consider to build the dataset for feature selection
-    project_dir = '/work/bk1318/b382153/'
+    project_dir = '/home/simul6/Documentos/Filippo/'
     cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters')
     indexes_path = os.path.join(project_dir, 'data', 'CI')
     resolution = '{}x{}'.format(res, res)

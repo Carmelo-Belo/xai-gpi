@@ -226,8 +226,8 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
             ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
             ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
         if display_percentage:
-            ax.set_yticks(np.arange(101)[::10])
-            ax.set_yticklabels((np.arange(101)[::10]), fontsize=12)
+            ax.set_yticks(np.arange(101)[::20])
+            ax.set_yticklabels((np.arange(101)[::20]), fontsize=12)
         else:
             ax.set_yticks(np.arange(experiments_considered+1)[::2])
             ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
@@ -331,10 +331,10 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
             ax1.set_title(f'No cluster var', fontsize=18, fontweight='bold')
             ax2.set_title(f'No cluster var', fontsize=18, fontweight='bold')
         if display_percentage:
-            ax1.set_yticks(np.arange(101)[::10])
-            ax1.set_yticklabels((np.arange(101)[::10]), fontsize=12)
-            ax2.set_yticks(np.arange(101)[::10])
-            ax2.set_yticklabels((np.arange(101)[::10]), fontsize=12)
+            ax1.set_yticks(np.arange(101)[::20])
+            ax1.set_yticklabels((np.arange(101)[::20]), fontsize=12)
+            ax2.set_yticks(np.arange(101)[::20])
+            ax2.set_yticklabels((np.arange(101)[::20]), fontsize=12)
         else:
             ax1.set_yticks(np.arange(experiments_considered+1)[::2])
             ax1.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
