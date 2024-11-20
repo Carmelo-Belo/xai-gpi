@@ -10,7 +10,7 @@ from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, KFold
 from sklearn import preprocessing
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
 import utils_results as ut
 
@@ -221,7 +221,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         Y_pred_fold_xgb = pd.DataFrame(Y_pred_fold_xgb, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_XGB = pd.concat([Y_pred_XGB, Y_pred_fold_xgb])
         # Evaluate the model for the optimized dataset
-        loss_xgb = root_mean_squared_error(Y_test_fold, Y_pred_fold_xgb)
+        loss_xgb = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_xgb))
         # Build, compile and train the xgboost regressor for the entire dataset
         xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror')
         xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], verbose=False)
@@ -229,7 +229,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         Y_pred_fold_xgb_noFS = pd.DataFrame(Y_pred_fold_xgb_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_XGB_noFS = pd.concat([Y_pred_XGB_noFS, Y_pred_fold_xgb_noFS])
         # Evaluate the model for the entire dataset
-        loss_xgb_noFS = root_mean_squared_error(Y_test_fold_noFS, Y_pred_fold_xgb_noFS)
+        loss_xgb_noFS = np.sqrt(mean_squared_error(Y_test_fold_noFS, Y_pred_fold_xgb_noFS))
         # Plot the training and validation loss for the 2 models
         fig = ut.plot_train_val_loss(xgboost.evals_result_['validation_0']['rmse'], xgboost.evals_result_['validation_1']['rmse'],
                                     xgboost_noFS.evals_result_['validation_0']['rmse'], xgboost_noFS.evals_result_['validation_1']['rmse'], loss_xgb, loss_xgb_noFS)
@@ -243,7 +243,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_LGBM = pd.concat([Y_pred_LGBM, Y_pred_fold_lgbm])
         # Evaluate the model for the optimized dataset
-        loss_lgbm = root_mean_squared_error(Y_test_fold, Y_pred_fold_lgbm)
+        loss_lgbm = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_lgbm))
         # Build, compile and train the lightgbm regressor for the entire dataset
         lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression')
         lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)])
@@ -251,7 +251,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_LGBM_noFS = pd.concat([Y_pred_LGBM_noFS, Y_pred_fold_lgbm_noFS])
         # Evaluate the model for the entire dataset
-        loss_lgbm_noFS = root_mean_squared_error(Y_test_fold_noFS, Y_pred_fold_lgbm_noFS)
+        loss_lgbm_noFS = np.sqrt(mean_squared_error(Y_test_fold_noFS, Y_pred_fold_lgbm_noFS))
         # Plot the training and validation loss for the 2 models
         fig = ut.plot_train_val_loss(lgbm.evals_result_['training']['l2'], lgbm.evals_result_['valid_1']['l2'], 
                                     lgbm_noFS.evals_result_['training']['l2'], lgbm_noFS.evals_result_['valid_1']['l2'], loss_lgbm, loss_lgbm_noFS)

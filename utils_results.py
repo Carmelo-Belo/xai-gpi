@@ -326,12 +326,14 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
     return figs
 
 # Function to plot the heatmaps for the selected features across different experiments
-def plot_heatmaps(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Create the dataframe with the total selection for each variable
-    selected_vars_df_tot = selected_vars_df_list[0].copy()
     max_columns = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max()
     n_lags = max_columns - 1
-    for s, selected_vars_df in enumerate(selected_vars_df_list[1:]):
+    selected_vars_df_tot = pd.DataFrame({'column_names': selected_vars_df_list[0]['column_names']})
+    for l in range(n_lags):
+        selected_vars_df_tot[f'lag_{l}'] = 0
+    for s, selected_vars_df in enumerate(selected_vars_df_list):
         if len(selected_vars_df.columns) < max_columns:
             selected_vars_df_tot.iloc[:,1:max_columns-1] = selected_vars_df_tot.iloc[:,1:max_columns-1] + selected_vars_df.iloc[:,1:max_columns-1]
         else:
