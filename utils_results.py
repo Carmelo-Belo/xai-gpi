@@ -246,7 +246,7 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
     for lag in range(lags_number):
         fig = plt.figure(figsize=(16,16))
         figs.append(fig)
-        gs.append(gridspec.GridSpec(3, 3), figure=fig)
+        gs.append(gridspec.GridSpec(3, 3, figure=fig))
     # Get the number of experiments for computing percentages + define cluster strings for axes
     experiments_considered = len(experiments_folders)
     cluster_strings = [f'cluster{i}' for i in range(1,n_clusters+1)]
@@ -286,61 +286,40 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
             var_selection_info_LGBM.iloc[:,1:] = var_selection_info_LGBM.iloc[:,1:] / experiments_considered * 100
             var_selection_info_XGB.iloc[:,1:] = var_selection_info_XGB.iloc[:,1:] / experiments_considered * 100
         # Plot in the spyder plot
-        ax1 = fig1.add_subplot(gs1[i], polar=True)
-        ax2 = fig2.add_subplot(gs2[i], polar=True)
-        # All models
         angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
         angles += angles[:1]
-        # LinReg
-        values_lag_0_LinReg = var_selection_info_LinReg['lag_0'].to_numpy()
-        values_lag_1_LinReg = var_selection_info_LinReg['lag_1'].to_numpy()
-        values_lag_0_LinReg = np.concatenate((values_lag_0_LinReg,[values_lag_0_LinReg[0]]))
-        values_lag_1_LinReg = np.concatenate((values_lag_1_LinReg,[values_lag_1_LinReg[0]]))
-        ax1.fill(angles, values_lag_0_LinReg, color='coral', label='LinReg')
-        ax2.fill(angles, values_lag_1_LinReg, color='cornflowerblue', label='LinReg')
-        # LGBM
-        values_lag_0_LGBM = var_selection_info_LGBM['lag_0'].to_numpy() + var_selection_info_LinReg['lag_0'].to_numpy()
-        values_lag_1_LGBM = var_selection_info_LGBM['lag_1'].to_numpy() + var_selection_info_LinReg['lag_1'].to_numpy()
-        values_lag_0_LGBM = np.concatenate((values_lag_0_LGBM,[values_lag_0_LGBM[0]]))
-        values_lag_1_LGBM = np.concatenate((values_lag_1_LGBM,[values_lag_1_LGBM[0]]))
-        ax1.fill_between(angles, values_lag_0_LinReg, values_lag_0_LGBM, color='tomato', label='LGBM')
-        ax2.fill_between(angles, values_lag_1_LinReg, values_lag_1_LGBM, color='royalblue', label='LGBM')
-        # XGB
-        values_lag_0_XGB = var_selection_info_XGB['lag_0'].to_numpy() + var_selection_info_LGBM['lag_0'].to_numpy() + var_selection_info_LinReg['lag_0'].to_numpy()
-        values_lag_1_XGB = var_selection_info_XGB['lag_1'].to_numpy() + var_selection_info_LGBM['lag_1'].to_numpy() + var_selection_info_LinReg['lag_1'].to_numpy()
-        values_lag_0_XGB = np.concatenate((values_lag_0_XGB,[values_lag_0_XGB[0]]))
-        values_lag_1_XGB = np.concatenate((values_lag_1_XGB,[values_lag_1_XGB[0]]))
-        ax1.fill_between(angles, values_lag_0_LGBM, values_lag_0_XGB, color='orangered', label='XGB')
-        ax2.fill_between(angles, values_lag_1_LGBM, values_lag_1_XGB, color='blue', label='XGB')
-        # Set plots properties
-        ax1.set_xticks(angles[:-1])
-        ax2.set_xticks(angles[:-1])
-        if var in atm_vars:
-            ax1.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
-            ax2.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
-            ax1.set_title(f'{var}', fontsize=18, fontweight='bold')
-            ax2.set_title(f'{var}', fontsize=18, fontweight='bold')
-        else:
-            ax1.set_xticklabels(var_selection_info['column_names'], fontsize=16)
-            ax2.set_xticklabels(var_selection_info['column_names'], fontsize=16)
-            ax1.set_title(f'No cluster var', fontsize=18, fontweight='bold')
-            ax2.set_title(f'No cluster var', fontsize=18, fontweight='bold')
-        if display_percentage:
-            ax1.set_yticks(np.arange(101)[::20])
-            ax1.set_yticklabels((np.arange(101)[::20]), fontsize=12)
-            ax2.set_yticks(np.arange(101)[::20])
-            ax2.set_yticklabels((np.arange(101)[::20]), fontsize=12)
-        else:
-            ax1.set_yticks(np.arange(experiments_considered+1)[::2])
-            ax1.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
-            ax2.set_yticks(np.arange(experiments_considered+1)[::2])
-            ax2.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
-        ax1.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
-        ax2.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
+        for l in range(lags_number):
+            # Get the values for each model
+            values_LinReg = var_selection_info_LinReg[f'lag_{l}'].to_numpy()
+            values_LGBM = var_selection_info_LGBM[f'lag_{l}'].to_numpy() + values_LinReg
+            values_XGB = var_selection_info_XGB[f'lag_{l}'].to_numpy() + values_LGBM
+            values_LinReg = np.concatenate((values_LinReg,[values_LinReg[0]]))
+            values_LGBM = np.concatenate((values_LGBM,[values_LGBM[0]]))
+            values_XGB = np.concatenate((values_XGB,[values_XGB[0]]))
+            # Plot the values for each model
+            ax = figs[l].add_subplot(gs[l][i], polar=True)
+            ax.fill(angles, values_LinReg, color='coral', label='LinReg') # cornflowerblue
+            ax.fill_between(angles, values_LinReg, values_LGBM, color='tomato', label='LGBM') # royalblue
+            ax.fill_between(angles, values_LGBM, values_XGB, color='orangered', label='XGB') # blue
+            # Set plots properties
+            ax.set_xticks(angles[:-1])
+            if var in atm_vars:
+                ax.set_xticklabels(np.arange(1,n_clusters+1), fontsize=16)
+                ax.set_title(f'{var}', fontsize=18, fontweight='bold')
+            else:
+                ax.set_xticklabels(var_selection_info['column_names'], fontsize=16)
+                ax.set_title(f'No cluster var', fontsize=18, fontweight='bold')
+            if display_percentage:
+                ax.set_yticks(np.arange(101)[::20])
+                ax.set_yticklabels((np.arange(101)[::20]), fontsize=12)
+            else:
+                ax.set_yticks(np.arange(experiments_considered+1)[::2])
+                ax.set_yticklabels((np.arange(experiments_considered+1)[::2]), fontsize=12)
+            ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1), fontsize=12)
 
         if var in idx_vars:
             break
-
-    fig1.set_tight_layout(True)
-    fig2.set_tight_layout(True)
-    return fig1, fig2
+    
+    for fig in figs:
+        fig.set_tight_layout(True)
+    return figs
