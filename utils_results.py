@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
@@ -183,7 +184,7 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
 # Function to plot the spyder plots on the variables selection across different experiments
 def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Set figure and grid for plotting
-    lags_number = len(selected_vars_df_list[0].columns) - 1
+    lags_number = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max() - 1
     fig = plt.figure(figsize=(15,15))
     gs = gridspec.GridSpec(3, 3, figure=fig)
     # Get the number of experiments for computing percentages + define cluster strings for axes
@@ -240,7 +241,7 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
 # Function to plot the spyder plots on the variables selection across different experiments and showing the selection for each model
 def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Set figure and grid for plotting
-    lags_number = len(selected_vars_df_list[0].columns) - 1
+    lags_number = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max() - 1
     figs = []
     gs = []
     for lag in range(lags_number):
@@ -323,3 +324,59 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
     for fig in figs:
         fig.set_tight_layout(True)
     return figs
+
+# Function to plot the heatmaps for the selected features across different experiments
+def plot_heatmaps(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+    # Create the dataframe with the total selection for each variable
+    selected_vars_df_tot = selected_vars_df_list[0].copy()
+    max_columns = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max()
+    n_lags = max_columns - 1
+    for s, selected_vars_df in enumerate(selected_vars_df_list[1:]):
+        if len(selected_vars_df.columns) < max_columns:
+            selected_vars_df_tot.iloc[:,1:max_columns-1] = selected_vars_df_tot.iloc[:,1:max_columns-1] + selected_vars_df.iloc[:,1:max_columns-1]
+        else:
+            selected_vars_df_tot.iloc[:,1:] = selected_vars_df_tot.iloc[:,1:] + selected_vars_df.iloc[:,1:]
+
+    fig = plt.figure(figsize=(15, 15))
+    gs = gridspec.GridSpec(2, 2, figure=fig)
+    # Plot heatmaps for each lag for the cluster variables
+    for l in range(n_lags):
+        # Create dataframe for the heatmap
+        cluster_var_heatmap_df = pd.DataFrame({'variables': atm_vars})
+        for n in range(1, n_clusters+1):
+            cluster_var_heatmap_df[f'cluster{n}'] = np.nan
+        for r, row in cluster_var_heatmap_df.iterrows():
+            var = row['variables']
+            for n in range(1, n_clusters+1): 
+                row[f'cluster{n}'] = selected_vars_df_tot[selected_vars_df_tot['column_names'] == f'{var}_cluster{n}'][f'lag_{l}'].values[0]
+                cluster_var_heatmap_df.loc[r] = row
+        cluster_var_heatmap_df.set_index('variables', inplace=True)
+        # Plot the heatmap
+        ax = fig.add_subplot(gs[l])
+        if display_percentage:
+            cluster_var_heatmap_df = cluster_var_heatmap_df / len(experiments_folders) * 100
+            vmax = 100
+        else:
+            vmax = len(experiments_folders)
+        ax = sns.heatmap(cluster_var_heatmap_df, annot=True, cmap='coolwarm', cbar=False, fmt='.0f', center=0, vmin=0, vmax=vmax)
+        ax.set_title(f'Lag {l}')
+        ax.set_ylabel('')
+        ax.set_yticks(np.arange(len(cluster_var_heatmap_df))+0.5, cluster_var_heatmap_df.index, rotation=0)
+        if display_percentage:
+            for text in ax.texts:
+                text.set_text(f"{(float(text.get_text())):.0f}%")
+    # Plot the indexes heatmap
+    ax = fig.add_subplot(gs[3])
+    idxs_var_heatmap_df = selected_vars_df_tot[selected_vars_df_tot['column_names'].isin(idx_vars)]
+    idxs_var_heatmap_df.set_index('column_names', inplace=True)
+    if display_percentage:
+        idxs_var_heatmap_df = idxs_var_heatmap_df / len(experiments_folders) * 100
+    ax = sns.heatmap(idxs_var_heatmap_df, annot=True, cmap='coolwarm', cbar=False, fmt='.0f', center=0, vmin=0, vmax=vmax)
+    ax.set_title(f'No cluster vars')
+    ax.set_ylabel('')
+    ax.set_yticks(np.arange(len(idxs_var_heatmap_df))+0.5, idxs_var_heatmap_df.index, rotation=0)
+    if display_percentage:
+        for text in ax.texts:
+            text.set_text(f"{(float(text.get_text())):.0f}%")
+
+    return fig
