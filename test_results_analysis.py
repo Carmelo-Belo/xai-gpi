@@ -237,7 +237,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
 
         ## LightGBM ##
         # Build, compile and train the lightgbm regressor for the optimized dataset
-        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression')
+        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression', verbosity=-1)
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)])
         Y_pred_fold_lgbm = lgbm.predict(X_test)
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
@@ -245,7 +245,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
         # Evaluate the model for the optimized dataset
         loss_lgbm = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_lgbm))
         # Build, compile and train the lightgbm regressor for the entire dataset
-        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression')
+        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression', verbosity=-1)
         lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)])
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
