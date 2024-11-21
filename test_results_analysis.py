@@ -14,7 +14,7 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
 import utils_results as ut
 
-def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds, start_year, end_year):
+def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds, start_year, end_year):
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -257,6 +257,17 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
                                     lgbm_noFS.evals_result_['training']['l2'], lgbm_noFS.evals_result_['valid_1']['l2'], loss_lgbm, loss_lgbm_noFS)
         fig.savefig(os.path.join(loss_figure_dir, f'LGBM_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
 
+    # Create a dataframe where to store the info of the runs and correlations with the target variable
+    performance_df_file = os.path.join(fs_dir, 'results', f'sim_performance_{basin}.csv')
+    performance_columns = ['experiment', 'model', 'n_clusters', 'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_xgb', 'R_xgb_noFS', 'R_S_mlp', 
+                           'R_S_mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 'R_S_xgb', 'R_S_xgb_noFS', 'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS',
+                            'R_Y_xgb', 'R_Y_xgb_noFS']
+    if os.path.exists(performance_df_file):
+        performance_df = pd.read_csv(performance_df_file, index_col=0)
+    else:
+        performance_df = pd.DataFrame(columns=performance_columns)
+        performance_df.set_index('experiment', inplace=True)
+
     # Compare observations to predictions
     r_mlp, _ = pearsonr(Y_test, Y_pred_MLP['tcg'])
     r_xgb, _ = pearsonr(Y_test, Y_pred_XGB['tcg'])
@@ -289,20 +300,20 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     Y_pred_MLP_noFS_seasonal = Y_pred_MLP_noFS.groupby(Y_pred_MLP_noFS.index.month).mean()
     Y_pred_XGB_noFS_seasonal = Y_pred_XGB_noFS.groupby(Y_pred_XGB_noFS.index.month).mean()
     Y_pred_LGBM_noFS_seasonal = Y_pred_LGBM_noFS.groupby(Y_pred_LGBM_noFS.index.month).mean()
-    r_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_seasonal['tcg'])
-    r_xgb, _ = pearsonr(Y_test_seasonal, Y_pred_XGB_seasonal['tcg'])
-    r_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_seasonal['tcg'])
-    r_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_noFS_seasonal['tcg'])
-    r_xgb_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_XGB_noFS_seasonal['tcg'])
-    r_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_noFS_seasonal['tcg'])
+    rS_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_seasonal['tcg'])
+    rS_xgb, _ = pearsonr(Y_test_seasonal, Y_pred_XGB_seasonal['tcg'])
+    rS_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_seasonal['tcg'])
+    rS_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_noFS_seasonal['tcg'])
+    rS_xgb_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_XGB_noFS_seasonal['tcg'])
+    rS_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_noFS_seasonal['tcg'])
     plt.figure(figsize=(10, 6))
     plt.plot(Y_test_seasonal.index, Y_test_seasonal, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
-    plt.plot(Y_pred_MLP_seasonal.index, Y_pred_MLP_seasonal['tcg'], label=f'FS-MLP - R:{r_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_MLP_noFS_seasonal.index, Y_pred_MLP_noFS_seasonal['tcg'], label=f'NoFS-MLP - R:{r_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_XGB_seasonal.index, Y_pred_XGB_seasonal['tcg'], label=f'FS-XGB - R:{r_xgb:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_XGB_noFS_seasonal.index, Y_pred_XGB_noFS_seasonal['tcg'], label=f'NoFS-XGB - R:{r_xgb_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_LGBM_seasonal.index, Y_pred_LGBM_seasonal['tcg'], label=f'FS-LGBM - R:{r_lgbm:.3f}', color='#d62728', linewidth=2)
-    plt.plot(Y_pred_LGBM_noFS_seasonal.index, Y_pred_LGBM_noFS_seasonal['tcg'], label=f'NoFS-LGBM - R:{r_lgbm_noFS:.3f}', color='#d62728', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_MLP_seasonal.index, Y_pred_MLP_seasonal['tcg'], label=f'FS-MLP - R:{rS_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_MLP_noFS_seasonal.index, Y_pred_MLP_noFS_seasonal['tcg'], label=f'NoFS-MLP - R:{rS_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_XGB_seasonal.index, Y_pred_XGB_seasonal['tcg'], label=f'FS-XGB - R:{rS_xgb:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_XGB_noFS_seasonal.index, Y_pred_XGB_noFS_seasonal['tcg'], label=f'NoFS-XGB - R:{rS_xgb_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_LGBM_seasonal.index, Y_pred_LGBM_seasonal['tcg'], label=f'FS-LGBM - R:{rS_lgbm:.3f}', color='#d62728', linewidth=2)
+    plt.plot(Y_pred_LGBM_noFS_seasonal.index, Y_pred_LGBM_noFS_seasonal['tcg'], label=f'NoFS-LGBM - R:{rS_lgbm_noFS:.3f}', color='#d62728', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Months')
     plt.ylabel('# of TCs per month')
@@ -318,20 +329,20 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     Y_pred_MLP_noFS_annual = Y_pred_MLP_noFS.resample('YE').sum()
     Y_pred_XGB_noFS_annual = Y_pred_XGB_noFS.resample('YE').sum()
     Y_pred_LGBM_noFS_annual = Y_pred_LGBM_noFS.resample('YE').sum()
-    r_mlp, _ = pearsonr(Y_test_annual, Y_pred_MLP_annual['tcg'])
-    r_xgb, _ = pearsonr(Y_test_annual, Y_pred_XGB_annual['tcg'])
-    r_lgbm, _ = pearsonr(Y_test_annual, Y_pred_LGBM_annual['tcg'])
-    r_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_MLP_noFS_annual['tcg'])
-    r_xgb_noFS, _ = pearsonr(Y_test_annual, Y_pred_XGB_noFS_annual['tcg'])
-    r_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_LGBM_noFS_annual['tcg'])
+    rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_MLP_annual['tcg'])
+    rY_xgb, _ = pearsonr(Y_test_annual, Y_pred_XGB_annual['tcg'])
+    rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_LGBM_annual['tcg'])
+    rY_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_MLP_noFS_annual['tcg'])
+    rY_xgb_noFS, _ = pearsonr(Y_test_annual, Y_pred_XGB_noFS_annual['tcg'])
+    rY_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_LGBM_noFS_annual['tcg'])
     plt.figure(figsize=(10, 6))
     plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
-    plt.plot(Y_pred_MLP_annual.index.year, Y_pred_MLP_annual['tcg'], label=f'FS-MLP - R:{r_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_MLP_noFS_annual.index.year, Y_pred_MLP_noFS_annual['tcg'], label=f'NoFS-MLP - R:{r_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_XGB_annual.index.year, Y_pred_XGB_annual['tcg'], label=f'FS-XGB - R:{r_xgb:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_XGB_noFS_annual.index.year, Y_pred_XGB_noFS_annual['tcg'], label=f'NoFS-XGB - R:{r_xgb_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_LGBM_annual.index.year, Y_pred_LGBM_annual['tcg'], label=f'FS-LGBM - R:{r_lgbm:.3f}', color='#d62728', linewidth=2)
-    plt.plot(Y_pred_LGBM_noFS_annual.index.year, Y_pred_LGBM_noFS_annual['tcg'], label=f'NoFS-LGBM - R:{r_lgbm_noFS:.3f}', color='#d62728', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_MLP_annual.index.year, Y_pred_MLP_annual['tcg'], label=f'FS-MLP - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_MLP_noFS_annual.index.year, Y_pred_MLP_noFS_annual['tcg'], label=f'NoFS-MLP - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_XGB_annual.index.year, Y_pred_XGB_annual['tcg'], label=f'FS-XGB - R:{rY_xgb:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_XGB_noFS_annual.index.year, Y_pred_XGB_noFS_annual['tcg'], label=f'NoFS-XGB - R:{rY_xgb_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_LGBM_annual.index.year, Y_pred_LGBM_annual['tcg'], label=f'FS-LGBM - R:{rY_lgbm:.3f}', color='#d62728', linewidth=2)
+    plt.plot(Y_pred_LGBM_noFS_annual.index.year, Y_pred_LGBM_noFS_annual['tcg'], label=f'NoFS-LGBM - R:{rY_lgbm_noFS:.3f}', color='#d62728', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('# of TCs per year')
@@ -339,16 +350,43 @@ def main(n_clusters, n_vars, n_idxs, results_folder, basin, model_kind, n_folds,
     plt.tight_layout()
     plt.savefig(os.path.join(results_figure_dir, f'annual_evolution.pdf'), format='pdf', dpi=300)
 
+    # Save the information of the runs in the performance dataframe
+    row_data = {
+        'experiment': results_folder,
+        'model': model_kind,
+        'n_clusters': n_clusters,
+        'R_mlp': r_mlp,
+        'R_mlp_noFS': r_mlp_noFS,
+        'R_lgbm': r_lgbm,
+        'R_lgbm_noFS': r_lgbm_noFS,
+        'R_xgb': r_xgb,
+        'R_xgb_noFS': r_xgb_noFS,
+        'R_S_mlp': rS_mlp,
+        'R_S_mlp_noFS': rS_mlp_noFS,
+        'R_S_lgbm': rS_lgbm,
+        'R_S_lgbm_noFS': rS_lgbm_noFS,
+        'R_S_xgb': rS_xgb,
+        'R_S_xgb_noFS': rS_xgb_noFS,
+        'R_Y_mlp': rY_mlp,
+        'R_Y_mlp_noFS': rY_mlp_noFS,
+        'R_Y_lgbm': rY_lgbm,
+        'R_Y_lgbm_noFS': rY_lgbm_noFS,
+        'R_Y_xgb': rY_xgb,
+        'R_Y_xgb_noFS': rY_xgb_noFS
+    }
+    performance_df.loc[results_folder] = row_data
+    performance_df.to_csv(performance_df_file)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results of the feature selection and training')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
     parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--results_folder', type=str, help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--model_kind', type=str, help='Model kind')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin name')
-    parser.add_argument('--model_kind', type=str, default='LinReg', help='Model kind')
     parser.add_argument('--n_folds', type=int, default=5, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
     parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
     args = parser.parse_args()
-    main(args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.basin, args.model_kind, args.n_folds, args.start_year, args.end_year)
+    main(args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.basin, args.n_folds, args.start_year, args.end_year)
