@@ -184,7 +184,7 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
 # Function to plot the spyder plots on the variables selection across different experiments
 def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Set figure and grid for plotting
-    lags_number = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max() - 1
+    lags_number = len(selected_vars_df_list[0].columns) - 1
     fig = plt.figure(figsize=(15,15))
     gs = gridspec.GridSpec(3, 3, figure=fig)
     # Get the number of experiments for computing percentages + define cluster strings for axes
@@ -241,7 +241,7 @@ def vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df
 # Function to plot the spyder plots on the variables selection across different experiments and showing the selection for each model
 def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Set figure and grid for plotting
-    lags_number = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max() - 1
+    lags_number = len(selected_vars_df_list[0].columns) - 1
     figs = []
     gs = []
     for lag in range(lags_number):
@@ -321,7 +321,8 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
         if var in idx_vars:
             break
     
-    for fig in figs:
+    for f, fig in enumerate(figs):
+        fig.suptitle(f'Lag {f} - Shares of variable selection', fontsize=20)
         fig.set_tight_layout(True)
     return figs
 
@@ -381,4 +382,37 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
         for text in ax.texts:
             text.set_text(f"{(float(text.get_text())):.0f}%")
 
+    fig.set_tight_layout(True)
+    return fig
+
+# Function to plot the heatmaps for variable selection without considering the clusters
+# So in case of cluster variables, the selection is counted if at least one cluster is selected
+def vars_selection_heatmaps_no_cluster(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+    # Create a dataframe containing the information of the selected variables
+    max_columns = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max()
+    n_lags = max_columns - 1
+    var_selection_tot = pd.DataFrame({'variables': atm_vars + idx_vars})
+    for l in range(n_lags):
+        var_selection_tot[f'lag_{l}'] = 0.0
+    for s, selected_vars_df in enumerate(selected_vars_df_list):
+        for v, var in enumerate(var_selection_tot['variables']):
+            sel_var = selected_vars_df[selected_vars_df['column_names'].str.contains(var)].iloc[:,1:]
+            sel_var = sel_var.sum(axis=0)
+            sel_var[sel_var > 0] = 1.0
+            if len(selected_vars_df.columns) < max_columns:
+                var_selection_tot.iloc[v,1:max_columns-1] = var_selection_tot.iloc[v,1:max_columns-1] + sel_var
+            else:
+                var_selection_tot.iloc[v,1:] = var_selection_tot.iloc[v,1:] + sel_var
+    # Create the heatmap
+    var_selection_tot.set_index('variables', inplace=True)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    if display_percentage:
+        var_selection_tot = var_selection_tot / len(experiments_folders) * 100
+    ax = sns.heatmap(var_selection_tot, annot=True, cmap='coolwarm', cbar=False, fmt='.0f', center=0, vmin=0, vmax=100)
+    ax.set_ylabel('')
+    if display_percentage:
+        for text in ax.texts:
+            text.set_text(f"{(float(text.get_text())):.0f}%")
+
+    fig.set_tight_layout(True)
     return fig
