@@ -1,7 +1,7 @@
 
 Data/Paper/local_variables.csv
 Data/Paper/locals_variables.csv
-
+*.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
