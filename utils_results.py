@@ -47,7 +47,7 @@ def get_text_color(background_color):
     # Return white text if brightness is low, black if high
     return 'white' if brightness < 0.5 else 'black'
 
-def plot_board(board, column_names, feat_sel, correlations, corr_report=False):
+def plot_board(board, column_names, feat_sel, correlations_lag0, correlations_lag1, corr_report=False):
     fig, ax = plt.subplots(figsize=(5, np.rint(len(column_names) / 5)))
     cmap = plt.get_cmap('Blues')
     norm = mcolors.Normalize(vmin=np.min(board), vmax=np.max(board))
@@ -75,7 +75,13 @@ def plot_board(board, column_names, feat_sel, correlations, corr_report=False):
             background_color = cmap(norm(cell_value))
             text_color = get_text_color(background_color)
             # Add text with dynamic color
-            ax.text(-0.1, pos - 1.25, f'{correlations[i]:.2f}', fontsize=10, color=text_color)
+            ax.text(-0.1, pos - 1.25, f'{correlations_lag0[i]:.2f}', fontsize=10, color=text_color)
+            # Get the background color for the specific cell
+            cell_value = board[i, 1]
+            background_color = cmap(norm(cell_value))
+            text_color = get_text_color(background_color)
+            # Add text with dynamic color
+            ax.text(0.9, pos - 1.25, f'{correlations_lag1[i]:.2f}', fontsize=10, color=text_color)
         if feat_sel[i] == 0:
             rect = plt.Rectangle((-0.5, pos - 1.5), 1, 1, color='red')
             ax.add_patch(rect)

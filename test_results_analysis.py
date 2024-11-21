@@ -87,11 +87,14 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
     filtered_target_df = target_df.loc[target_df.index.year.isin(years)]
     series1 = filtered_target_df['tcg'].to_numpy()
     filtered_predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
-    correlations = []
+    correlations_lag0 = []
+    correlations_lag1 = []
     for v, var in enumerate(predictors_df.columns):
         series2 = filtered_predictors_df.loc[:, var].to_numpy()
-        corr, _ = pearsonr(series1, series2)
-        correlations.append(corr)
+        corr0, _ = pearsonr(series1, series2)
+        correlations_lag0.append(corr0)
+        corr1, _ = pearsonr(series1[1:], series2[:-1])
+        correlations_lag1.append(corr1)
 
     # Select the variables from the best solutions and plot it
     column_names = predictors_df.columns.tolist()
@@ -102,9 +105,9 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
     n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = ut.create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
     if model_kind == 'LinReg':
-        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations, corr_report=True)
+        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations_lag0, correlations_lag1, corr_report=True)
     else:
-        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations)
+        fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations_lag0, correlations_lag1)
     fig_board.savefig(os.path.join(results_figure_dir, f'best_sol.pdf'), format='pdf', dpi=300)
 
     # Create dataset according to solution and list the labels of the selected variables
