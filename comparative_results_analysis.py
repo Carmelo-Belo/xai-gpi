@@ -17,7 +17,6 @@ def main(basin, n_clusters):
     experiments_folders.sort()
     experiments_folders_linreg = [f for f in experiments_folders if 'LinReg' in f]
     experiments_folders_lgbm = [f for f in experiments_folders if 'LGBM' in f]
-    experiments_folders_xgb = [f for f in experiments_folders if 'XGB' in f]
     # Load predicors dataframe
     experiment_filename = f'1965-2022_{n_clusters}clusters_7vars_10idxs.csv'
     predictors_df = pd.read_csv(os.path.join(data_dir, f'predictors_{experiment_filename}'), index_col=0)
@@ -26,7 +25,6 @@ def main(basin, n_clusters):
     selected_vars_df_list = []
     selected_vars_df_list_linreg = []
     selected_vars_df_list_lgbm = []
-    selected_vars_df_list_xgb = []
     for experiment_name in experiments_folders:
         model_kind = experiment_name.split('_')[1]
         best_solution = pd.read_csv(os.path.join(results_dir, experiment_name, f'best_solution_{model_kind}_{experiment_filename}'), sep=',', header=None)
@@ -36,8 +34,6 @@ def main(basin, n_clusters):
             selected_vars_df_list_linreg.append(selected_vars_df)
         elif "LGBM" in experiment_name:
             selected_vars_df_list_lgbm.append(selected_vars_df)
-        elif "XGB" in experiment_name:
-            selected_vars_df_list_xgb.append(selected_vars_df)
     # Set the names of the atmospheric variables (with clusters) and the indexes
     vars = predictors_df.columns.to_numpy()
     atm_vars =  np.unique([var.split('_cluster')[0] for var in vars if 'cluster' in var]).tolist()
@@ -69,13 +65,6 @@ def main(basin, n_clusters):
     plt.close(fig)
     heatmap = ut.vars_selection_heatmaps(experiments_folders_lgbm, n_clusters, selected_vars_df_list_lgbm, atm_vars, idx_vars, display_percentage=True)
     heatmap.savefig(os.path.join(sub_results_dir, f'lgbm_heatmaps.pdf'), format='pdf', dpi=300)
-    plt.close(heatmap)
-    # XGBoost
-    fig = ut.vars_selection_spyder_plot(experiments_folders_xgb, n_clusters, selected_vars_df_list_xgb, atm_vars, idx_vars, display_percentage=False)
-    fig.savefig(os.path.join(sub_results_dir, f'xgb_spyder_plot.pdf'), format='pdf', dpi=300)
-    plt.close(fig)
-    heatmap = ut.vars_selection_heatmaps(experiments_folders_xgb, n_clusters, selected_vars_df_list_xgb, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(sub_results_dir, f'xgb_heatmaps.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
 
 if __name__ == '__main__':
