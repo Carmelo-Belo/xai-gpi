@@ -272,7 +272,6 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
         # Create dataframe with the information for each model
         var_selection_info_LinReg = var_selection_info.copy()
         var_selection_info_LGBM = var_selection_info.copy()
-        var_selection_info_XGB = var_selection_info.copy()
         for s, seleceted_vars_df in enumerate(selected_vars_df_list):
             # Add the information of the selection for each model to the dataframe
             sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_selected)]
@@ -282,8 +281,6 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
                 var_selection_info_LinReg.iloc[:,1:] = (var_selection_info_LinReg.iloc[:,1:] + sel_info.iloc[:,1:])
             elif 'LGBM' in experiments_folders[s]:
                 var_selection_info_LGBM.iloc[:,1:] = (var_selection_info_LGBM.iloc[:,1:] + sel_info.iloc[:,1:])
-            elif 'XGB' in experiments_folders[s]:
-                var_selection_info_XGB.iloc[:,1:] = (var_selection_info_XGB.iloc[:,1:] + sel_info.iloc[:,1:])
             else:
                 raise ValueError('Model not recognized')
         # Compute the percentage of selection if requested
@@ -291,7 +288,6 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
             var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
             var_selection_info_LinReg.iloc[:,1:] = var_selection_info_LinReg.iloc[:,1:] / experiments_considered * 100
             var_selection_info_LGBM.iloc[:,1:] = var_selection_info_LGBM.iloc[:,1:] / experiments_considered * 100
-            var_selection_info_XGB.iloc[:,1:] = var_selection_info_XGB.iloc[:,1:] / experiments_considered * 100
         # Plot in the spyder plot
         angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
         angles += angles[:1]
@@ -299,15 +295,12 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
             # Get the values for each model
             values_LinReg = var_selection_info_LinReg[f'lag_{l}'].to_numpy()
             values_LGBM = var_selection_info_LGBM[f'lag_{l}'].to_numpy() + values_LinReg
-            values_XGB = var_selection_info_XGB[f'lag_{l}'].to_numpy() + values_LGBM
             values_LinReg = np.concatenate((values_LinReg,[values_LinReg[0]]))
             values_LGBM = np.concatenate((values_LGBM,[values_LGBM[0]]))
-            values_XGB = np.concatenate((values_XGB,[values_XGB[0]]))
             # Plot the values for each model
             ax = figs[l].add_subplot(gs[l][i], polar=True)
             ax.fill(angles, values_LinReg, color='coral', label='LinReg') # cornflowerblue
             ax.fill_between(angles, values_LinReg, values_LGBM, color='tomato', label='LGBM') # royalblue
-            ax.fill_between(angles, values_LGBM, values_XGB, color='orangered', label='XGB') # blue
             # Set plots properties
             ax.set_xticks(angles[:-1])
             if var in atm_vars:
