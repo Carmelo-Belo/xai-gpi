@@ -4,11 +4,11 @@ from PyCROSL.SubstrateReal import *
 from PyCROSL.SubstrateInt import *
 
 from lightgbm import LGBMRegressor
-from xgboost import XGBRegressor
 from sklearn import preprocessing
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
+from scipy.stats import pearsonr
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -63,12 +63,6 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
             self.opt = "min" # it can be "max" or "min"
 
             # We set the limits of the vector (window size, time lags and variable selection)
-            # self.sup_lim = np.append(np.append(np.repeat(60, predictors_df.shape[1]),np.repeat(180, predictors_df.shape[1])),np.repeat(1, predictors_df.shape[1]))  # array where each component indicates the maximum value of the component of the vector
-            # self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]),np.repeat(0, predictors_df.shape[1])),np.repeat(0, predictors_df.shape[1])) # array where each component indicates the minimum value of the component of the vector
-            # we call the constructor of the superclass with the size of the vector
-            # and wether we want to maximize or minimize the function 
-
-            # We set the limits of the vector (window size, time lags and variable selection)
             # Maximum time sequences I can select is 2, maximum time lag is 1 month, and the last one is regarding the binary selection of a variable
             self.sup_lim = np.append(np.append(np.repeat(2, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
             self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
@@ -121,8 +115,6 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
                 clf = LinearRegression()
             elif model_kind == 'LGBM':
                 clf = LGBMRegressor()
-            elif model_kind == 'XGB':
-                clf = XGBRegressor()
             else:
                 raise ValueError("Model kind not recognized")
             # Apply cross validation

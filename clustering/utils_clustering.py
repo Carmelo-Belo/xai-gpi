@@ -14,46 +14,75 @@ from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
 import os
 
 
+def crop_field(var, lon1, lon2, lat1, lat2):
+    """
+    Crop the specified variable to the specified domain.
 
-def filter_xarray(data, min_lat=-90, max_lat=90, min_lon=-180, max_lon=180, months=[1,2,3,4,5,6,7,8,9,10,11,12],resolution=2):
-    
-    ''' This function filters the data by latitude and longitude'''
-    
-    #Filtering the data
-    filtered_dataset = data.sel(latitude=np.arange(max_lat, min_lat-resolution,-resolution), longitude=np.arange(min_lon, max_lon+resolution,resolution))
+    Inputs:
+        var: xarray.DataArray or xarray.Dataset
+            The variable to crop
+        lon1: float
+            The western longitude of the domain (range: -180 to 180)
+        lon2: float
+            The eastern longitude of the domain (range: -180 to 180)
+        lat1: float
+            The southern latitude of the domain
+        lat2: float
+            The northern latitude of the domain
+    Outputs:
+        ds: xarray.DataArray or xarray.Dataset
+            The cropped variable
+    """
+    ds = var.copy()
+    # If the domain crosses/touches the meridian 180, convert to 0-360
+    if (lon1 <= 180 and lon2 >= -180 and lon1 > lon2) or (lon1 == -180) or (lon2 == 180):
+        ds.coords['longitude'] = (ds.longitude + 360) %360
+        ds = ds.sortby(ds.longitude)
+        if lon2 < 0:
+            lon2 = lon2 + 360
+        if lon1 < 0:
+            lon1 = lon1 + 360
+    return ds.sel(longitude=slice(lon1, lon2), latitude=slice(lat2, lat1))
 
-    filtered_dataset = filtered_dataset.sel(time=filtered_dataset['time.month'].isin(months))
-    
-    return filtered_dataset
+def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output):
+    """
+    Perform clustering of the specified atmospheric variable.
 
-def seasonal_smoothing(data_filtered_clima, variable, data_filtered):
-    year_average = data_filtered_clima.groupby('time.dayofyear').mean('time')
-    year_average2 = np.append(np.append(year_average[variable].values, year_average[variable].values,axis=0), year_average[variable].values,axis=0)
-    year_average_xarray = xr.DataArray(data=year_average2,dims=["dayofyear", "latitude", "longitude"],)
-    year_average_smooth = year_average.rolling(dayofyear=30,min_periods=1, center=True).mean('time')
-    year_average_smooth[variable] = year_average_xarray.rolling(dayofyear=30,min_periods=1, center=True).mean('time')[366:732,:,:]
-    year_average_smooth_nonleap = year_average_smooth.sel(dayofyear=year_average_smooth['dayofyear']!=60)
+    Inputs:
+        var: str
+            The acronym of the variable to cluster as saved in the .nc files
+        level: str
+            The pressure level of the variable to cluster, if surface level, set to 'sfc'
+        months: list
+            The months to consider for the clustering
+        basin: str
+            The basin considered for the clustering
+        n_clusters: int
+            The number of clusters to create
+        norm: bool
+            If True, normalize the data
+        train_yearI: int
+            The initial year for training
+        train_yearF: int
+            The final year for training
+        resolution: str
+            The resolution of the data
+        path_predictor: str
+            The path to the .nc files containing the data
+        path_output: str
+            The path to the output directory where to save the clustering results
+    Outputs:
+        centroids: list
+            The indices of the nodes closest to the cluster centers
+        centroids_dataframe: pd.DataFrame
+            The dataframe containing the timeseries of the centroids
+        clusters_av_dataframe: pd.DataFrame
+            The dataframe containing the average timeseries of each cluster
+        labels_dataframe: pd.DataFrame
+            The dataframe containing the cluster labels of each node
+    """
 
-    years = data_filtered.groupby('time.year').mean().year.values
-
-    import calendar
-
-    for year in years:
-        is_leap_year = calendar.isleap(year)
-        year_data = data_filtered.sel(time=data_filtered['time.year'] == year)
-
-        if is_leap_year:
-            diff = year_data[variable].values - year_average_smooth[variable].values
-        else:
-            diff = year_data[variable].values - year_average_smooth_nonleap[variable].values
-        year_data[variable] = (('time', 'latitude', 'longitude'), diff)  
-        data_filtered[variable].loc[dict(time=data_filtered['time.year'] == year)] = year_data[variable].values
-
-    return data_filtered
-
-def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soothing, train_yearI, train_yearF, test_yearI, test_yearF,
-                       resolution, path_predictor, path_output):
-
+    ## Load the variable data to cluster ## 
     # Define geographical coordinates according to the basin considered
     if basin == 'NWP':
         min_lon, max_lon, min_lat, max_lat = 100, 180, 0, 40
@@ -79,6 +108,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
             total_data = xr.open_dataset(path)[var]
         else:
             total_data = xr.concat([total_data, xr.open_dataset(path)[var]], dim='time')
+    # Filtered data based on the geographical limits
+    if basin != 'GLB':
+        total_data = crop_field(total_data, min_lon, max_lon, min_lat, max_lat)
+    ## IF WE WATN TO WORK ONLY ON CYCLONE SEASON WHEN BASIN WISE WE NEED TO ADJUST IT HERE ## 
     # If variable is defined on pressure levels, select the level specified in the inputs
     if (level != 'sfc') and (len(level) < 5):
         level = int(level)
@@ -100,21 +133,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     # Get the train and test data
     train_data = total_data.sel(time=slice(str(train_yearI)+'-01-01', str(train_yearF)+'-12-31'))
 
-    ## Perform the cluster only on the train years
-    # Data preprocessing
-    # from clustering import filter_xarray
-
-    ## CHECK BETTER FILTERING PROCESS WHEN WORKING BASIN WISE ##
-    # Data is filtered based on the geographical limits, months, resolution and years
-    # data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon, months=months,resolution=resolution)
-    # data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon, months=months,resolution=resolution)
-
-    # Perform the seasonal soothing
-    ## SEASONAL SMOOTHING IS DONE ON DAYS OF YEAR, NOT ON MONTHS ##
-    # from clustering import seasonal_smoothing
-    # if seasonal_soothing == True:
-    #     data_filtered = seasonal_smoothing(data_filtered_clima, variable, data_filtered)
-
+    ## Perform the cluster only on the train years ##
     # Reshape the data -> (time, lat, lon) -> (lat*lon, time)
     data = train_data.values
     data_res = data.reshape(data.shape[0], data.shape[1]*data.shape[2]).T
@@ -235,11 +254,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, seasonal_soo
     labels_dataframe['nodes_lon'] = np.array(nodes_list)[:,1]
     labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
 
-    # Save the data
-    centroids_dataframe.to_csv(os.path.join(path_output, f'centroids_{var}.csv'))
-    clusters_av_dataframe.to_csv(os.path.join(path_output, f'averages_{var}.csv'))
-    labels_dataframe.to_csv(os.path.join(path_output, f'labels_{var}.csv'))
-
     return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
 
 class cluster_model:
@@ -358,159 +372,3 @@ class cluster_model:
         plt.tight_layout()
         plt.close()
         return fig
-
-def compute_ENSO(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
-    var = 'sst'
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
-
-    min_lat=-5
-    max_lat=5
-    min_lon=-170
-    max_lon=-120
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-    daily_data_total.close()
-
-    variable = var  
-    # Data preprocessing
-    from utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-
-
-    # Merge the train and test data
-
-    # data_filtered_total = xr.concat([data_filtered, data_filtered_test], dim='time')
-    data_filtered_total = data_filtered
-
-    # Compute ENSO index
-
-    enso = data_filtered_total.mean(dim=['latitude','longitude'])
-
-    # Save the ENSO index
-
-    enso = enso.to_dataframe()
-    enso.columns = ['ENSO']
-    enso.to_csv(path_output+'ENSO_index.csv')
-
-    # Plot the ENSO index
-
-    plt.plot(np.arange(0,len(enso)), enso['ENSO'])
-
-    return enso
-
-
-def compute_IOD(path_predictors,path_output,first_year,last_year, first_clima,last_clima,resolution):
-    var = 'sst'
-
-    # Compute area averaged SST anomaly in the western tropical Indian Ocean
-
-    min_lat=-10
-    max_lat=10
-    min_lon=50
-    max_lon=70
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    daily_data_total = xr.concat([daily_data_train, daily_data_test], dim='time')
-
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_total.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_total.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-    daily_data_total.close()
-
-    variable = var  
-    # Data preprocessing
-    from utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    # data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    # data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-    # Merge the train and test data
-
-    # data_filtered_total_1 = xr.concat([data_filtered, data_filtered_test], dim='time')
-    data_filtered_total_1 = data_filtered
-    # Compute area averaged SST anomaly in the sotheastern tropical Indian Ocean
-
-    min_lat=-10
-    max_lat=0
-    min_lon=90
-    max_lon=110
-
-    import xarray as xr
-    daily_data_train = xr.open_dataset(path_predictors+'data_daily_'+var+'_1950_2010.nc')
-    daily_data_test = xr.open_dataset(path_predictors+'data_daily_'+var+'_2011_2022.nc')
-    
-
-
-    # Perform the cluster only on the train years
-    daily_data_train = daily_data_train.sel(time=slice(str(first_year)+'-01-01', str(int(last_year))+'-12-31'))
-    data_clima_time = daily_data_train.sel(time=slice(str(first_clima)+'-01-01', str(int(last_clima))+'-12-31'))
-
-
-    variable = var  
-    # Data preprocessing
-    from utils_clustering import filter_xarray
-    import numpy as np
-    # Data is filtered based on the geographical limits, months, resolution and years
-    data_filtered = filter_xarray(daily_data_train, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_clima = filter_xarray(data_clima_time, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-    data_filtered_test = filter_xarray(daily_data_test, min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,resolution=resolution)
-
-    # Perform the seasonal soothing
-    
-    from utils_clustering import seasonal_smoothing
-    data_filtered = seasonal_smoothing(data_filtered_clima,variable,data_filtered)
-    data_filtered_test = seasonal_smoothing(data_filtered_clima,variable,data_filtered_test)
-
-            
-    data_filtered_clima.close()
-    # Merge the train and test data
-
-    data_filtered_total_2 = xr.concat([data_filtered, data_filtered_test], dim='time')
-
-    # Compute IOD index
-
-    iod = data_filtered_total_1.mean(dim=['latitude','longitude'])-data_filtered_total_2.mean(dim=['latitude','longitude'])
-
-    # Save the IOD index
-
-    iod = iod.to_dataframe()
-    iod.columns = ['IOD']
-    iod.to_csv(path_output+'IOD_index.csv')
-
-    # Plot the IOD index
-
-    plt.plot(np.arange(0,len(iod)), iod['IOD'])
-
-    return iod
