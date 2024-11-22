@@ -269,6 +269,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     # Filtered data based on the geographical limits
     if basin != 'GLB':
         total_data = crop_field(total_data, min_lon, max_lon, min_lat, max_lat)
+        anomaly = crop_field(anomaly, min_lon, max_lon, min_lat, max_lat)
     ## IF WE WANT TO WORK ONLY ON CYCLONE SEASON WHEN BASIN WISE WE NEED TO ADJUST IT HERE ##
 
     ## Perform the cluster only on the train years ##
