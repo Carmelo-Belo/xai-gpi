@@ -270,37 +270,37 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
         var_selection_info = selected_vars_df[selected_vars_df['column_names'].isin(vars_selected)]
         var_selection_info.iloc[:,1:] = 0.0
         # Create dataframe with the information for each model
-        var_selection_info_LinReg = var_selection_info.copy()
-        var_selection_info_LGBM = var_selection_info.copy()
+        var_selection_info_linreg = var_selection_info.copy()
+        var_selection_info_lgbm = var_selection_info.copy()
         for s, seleceted_vars_df in enumerate(selected_vars_df_list):
             # Add the information of the selection for each model to the dataframe
             sel_info = seleceted_vars_df[seleceted_vars_df['column_names'].isin(vars_selected)]
             var_selection_info.iloc[:,1:] = (var_selection_info.iloc[:,1:] + sel_info.iloc[:,1:])
             # Add the information of the selection for each model separetely
-            if 'LinReg' in experiments_folders[s]:
-                var_selection_info_LinReg.iloc[:,1:] = (var_selection_info_LinReg.iloc[:,1:] + sel_info.iloc[:,1:])
-            elif 'LGBM' in experiments_folders[s]:
-                var_selection_info_LGBM.iloc[:,1:] = (var_selection_info_LGBM.iloc[:,1:] + sel_info.iloc[:,1:])
+            if 'linreg' in experiments_folders[s]:
+                var_selection_info_linreg.iloc[:,1:] = (var_selection_info_linreg.iloc[:,1:] + sel_info.iloc[:,1:])
+            elif 'lgbm' in experiments_folders[s]:
+                var_selection_info_lgbm.iloc[:,1:] = (var_selection_info_lgbm.iloc[:,1:] + sel_info.iloc[:,1:])
             else:
                 raise ValueError('Model not recognized')
         # Compute the percentage of selection if requested
         if display_percentage:
             var_selection_info.iloc[:,1:] = var_selection_info.iloc[:,1:] / experiments_considered * 100
-            var_selection_info_LinReg.iloc[:,1:] = var_selection_info_LinReg.iloc[:,1:] / experiments_considered * 100
-            var_selection_info_LGBM.iloc[:,1:] = var_selection_info_LGBM.iloc[:,1:] / experiments_considered * 100
+            var_selection_info_linreg.iloc[:,1:] = var_selection_info_linreg.iloc[:,1:] / experiments_considered * 100
+            var_selection_info_lgbm.iloc[:,1:] = var_selection_info_lgbm.iloc[:,1:] / experiments_considered * 100
         # Plot in the spyder plot
         angles = np.linspace(0, 2 * np.pi, len(var_selection_info), endpoint=False).tolist()
         angles += angles[:1]
         for l in range(lags_number):
             # Get the values for each model
-            values_LinReg = var_selection_info_LinReg[f'lag_{l}'].to_numpy()
-            values_LGBM = var_selection_info_LGBM[f'lag_{l}'].to_numpy() + values_LinReg
-            values_LinReg = np.concatenate((values_LinReg,[values_LinReg[0]]))
-            values_LGBM = np.concatenate((values_LGBM,[values_LGBM[0]]))
+            values_linreg = var_selection_info_linreg[f'lag_{l}'].to_numpy()
+            values_lgbm = var_selection_info_lgbm[f'lag_{l}'].to_numpy() + values_linreg
+            values_linreg = np.concatenate((values_linreg,[values_linreg[0]]))
+            values_lgbm = np.concatenate((values_lgbm,[values_lgbm[0]]))
             # Plot the values for each model
             ax = figs[l].add_subplot(gs[l][i], polar=True)
-            ax.fill(angles, values_LinReg, color='coral', label='LinReg') # cornflowerblue
-            ax.fill_between(angles, values_LinReg, values_LGBM, color='tomato', label='LGBM') # royalblue
+            ax.fill(angles, values_linreg, color='coral', label='linreg') # cornflowerblue
+            ax.fill_between(angles, values_linreg, values_lgbm, color='tomato', label='lgbm') # royalblue
             # Set plots properties
             ax.set_xticks(angles[:-1])
             if var in atm_vars:
@@ -388,7 +388,7 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
 
 # Function to plot the heatmaps for variable selection without considering the clusters
 # So in case of cluster variables, the selection is counted if at least one cluster is selected
-def vars_selection_heatmaps_no_cluster(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+def vars_selection_heatmaps_no_cluster(experiments_folders, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
     # Create a dataframe containing the information of the selected variables
     max_columns = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max()
     n_lags = max_columns - 1
