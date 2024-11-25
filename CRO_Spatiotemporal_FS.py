@@ -114,9 +114,9 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             X_test=pd.DataFrame(X_std_test, columns=X_test.columns, index=X_test.index)
 
             # Train model
-            if model_kind == 'LinReg':
+            if model_kind == 'linreg':
                 clf = LinearRegression()
-            elif model_kind == 'LGBM':
+            elif model_kind == 'lgbm':
                 clf = LGBMRegressor(verbosity=-1)
             else:
                 raise ValueError("Model kind not recognized")
