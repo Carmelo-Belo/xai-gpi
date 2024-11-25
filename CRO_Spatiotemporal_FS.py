@@ -219,12 +219,12 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature selection with CRO')
-    parser.add_argument('--basin', type=str, default='GLB', help='Basin')
-    parser.add_argument('--n_clusters', type=int, default=6, help='Number of clusters')
-    parser.add_argument('--anomaly_clustering', type=str, default='n', help='If y retrieve dataset of anomaly clustering')
-    parser.add_argument('--n_vars', type=int, default=7, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, default=10, help='Number of climate indexes considered in the FS process')
-    parser.add_argument('--output_folder', type=str, default='dummy_test', help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--basin', type=str, help='Basin')
+    parser.add_argument('--n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('--anomaly_clustering', type=str, help='If y retrieve dataset of anomaly clustering')
+    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
     parser.add_argument('--model_kind', type=str, default='LinReg', help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
