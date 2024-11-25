@@ -36,4 +36,4 @@ if __name__ == '__main__':
     parser.add_argument('--first_year', type=int, default=1965, help='First year')
     parser.add_argument('--last_year', type=int, default=2022, help='Last year')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.res, args.first_year, args.last_year)
+    main(args.basin, args.n_clusters, args.anomaly_clustering, args.res, args.first_year, args.last_year)

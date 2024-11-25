@@ -16,14 +16,17 @@ import numpy as np
 import os
 import argparse
 
-def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yearI, train_yearF, test_yearF):
+def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     target_file = 'target_1965-2022_2.5x2.5.csv'
     # Set directories
     fs_dir = os.path.join(project_dir, 'FS_TCG')
-    data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
+    if anomaly_clustering == 'y':
+        data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_anomaly')
+    else:
+        data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
 
     # Set path and name of the predictor dataset and target dataset
     experiment_filename = f'1965-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
@@ -43,7 +46,7 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
     solution_filename = 'CRO_' + model_kind + '_' + experiment_filename # this file stores the last solution found by the algorithm
 
     # Create an empty file to store the solutions provided by the algorithm
-    sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
+    sol_data = pd.DataFrame(columns=['Metric', 'CV', 'RY', 'Test', 'Sol'])
     sol_data.to_csv(indiv_path, sep=' ', header=sol_data.columns, index=None)
 
     # Split the dataset into train and test
@@ -64,7 +67,7 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
 
             # We set the limits of the vector (window size, time lags and variable selection)
             # Maximum time sequences I can select is 2, maximum time lag is 1 month, and the last one is regarding the binary selection of a variable
-            self.sup_lim = np.append(np.append(np.repeat(2, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
+            self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
             self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
 
             super().__init__(self.size, self.opt, self.sup_lim, self.inf_lim)
@@ -114,24 +117,33 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
             if model_kind == 'LinReg':
                 clf = LinearRegression()
             elif model_kind == 'LGBM':
-                clf = LGBMRegressor()
+                clf = LGBMRegressor(verbosity=-1)
             else:
                 raise ValueError("Model kind not recognized")
             # Apply cross validation
             cv_scores = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
             clf.fit(X_train, Y_train)
+            # Compute the yearly correlation on the train set
+            Y_pred_train = clf.predict(X_train)
+            Y_pred_train = pd.Series(Y_pred_train, index=Y_train.index)
+            Y_pred_train_annual = Y_pred_train.resample('Y').sum()
+            Y_train_annual = Y_train.resample('Y').sum()
+            train_corr, _ = pearsonr(Y_train_annual, Y_pred_train_annual)
+            # Compute accuracy metric combining correlation and cross-validated MSE
+            nr_mse = (10 - (-cv_scores.mean())) / 10
+            acc_metric = nr_mse +  1 / train_corr #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
+            # Evaluate model on the test set
             Y_pred = clf.predict(X_test)
             test_mse = mean_squared_error(Y_test, Y_pred)
-            test_r2 = r2_score(Y_test, Y_pred)
+            # test_r2 = r2_score(Y_test, Y_pred)
             # print(f"Cross-validated MSE: {-cv_scores.mean()}")  # Negated to report positive MSE
             # print(f"Test MSE: {test_mse}, Test R^2: {test_r2}")
             # Prepare solution to save
-            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-cv_scores.mean()], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
-
+            sol_file = pd.concat([sol_file, pd.DataFrame({'Metric': [acc_metric], 'CV': [-cv_scores.mean()], 'RY': [train_corr], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             
-            return 1/cv_scores.mean()
+            return acc_metric
         
         """
         This will be the function used to generate random vectors for the initialization of the algorithm
@@ -207,14 +219,15 @@ def main(n_clusters, n_vars, n_idxs, output_folder, basin, model_kind, train_yea
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature selection with CRO')
-    parser.add_argument('--n_clusters', type=int, help='Number of clusters')
-    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
-    parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin')
+    parser.add_argument('--n_clusters', type=int, default=6, help='Number of clusters')
+    parser.add_argument('--anomaly_clustering', type=str, default='n', help='If y retrieve dataset of anomaly clustering')
+    parser.add_argument('--n_vars', type=int, default=7, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, default=10, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--output_folder', type=str, default='dummy_test', help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--model_kind', type=str, default='LinReg', help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
     args = parser.parse_args()
-    main(args.n_clusters, args.n_vars, args.n_idxs, args.output_folder, args.basin, args.model_kind, args.train_yearI, args.train_yearF, args.test_yearF)
+    main(args.basin, args.n_clusters, args.anomaly_clustering, args.n_vars, args.n_idxs, args.output_folder, args.model_kind, args.train_yearI, args.train_yearF, args.test_yearF)
