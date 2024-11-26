@@ -14,7 +14,7 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
 import utils_results as ut
 
-def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds, start_year, end_year):
+def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds, start_year, end_year):
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -25,7 +25,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
     sol_filename = f'{model_kind}_' + experiment_filename
     predictor_file = 'predictors_' + experiment_filename
     fs_dir = os.path.join(project_dir, 'FS_TCG')
-    output_dir = os.path.join(fs_dir, 'results', results_folder)
+    output_dir = os.path.join(fs_dir, 'results', basin, results_folder)
     sol_path = os.path.join(output_dir, sol_filename)
     # final_sol_path = os.path.join(output_dir, f'CRO_{sol_filename}')
     best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
@@ -52,35 +52,40 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
     best_solution = best_solution.to_numpy().flatten()
 
     # Find the Cross-Validation and Test metric for the best solution found
-    CVbest = sol_file_df['CV'].idxmin() # metric is mean squared error
-    Testbest = sol_file_df['Test'].idxmin()
+    MetricBest = sol_file_df['Metric'].idxmin() 
+    CVbest = sol_file_df['CV'].idxmin() 
+    RYbest = sol_file_df['RY'].idxmax() # higher correlation is better
 
-    # Plot the evolution of the metric for each solution found per evaluation
+    # Plot the evolution of the different metrics for each solution found per evaluation
+    # Metric of fitness function
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(sol_file_df.index, sol_file_df['CV'], label='Cross-Validation')
-    ax.plot(sol_file_df.index, sol_file_df['Test'], label='Test')
-    ax.scatter(sol_file_df.index[CVbest], sol_file_df['CV'][CVbest], color='black', label='Best CV')
-    ax.scatter(sol_file_df.index[Testbest], sol_file_df['Test'][Testbest], color='green', label='Best Test')
+    ax.plot(sol_file_df.index, sol_file_df['Metric'], label='Train')
+    ax.plot(sol_file_df.index, sol_file_df['Test_Metric'], label='Test')
+    ax.scatter(sol_file_df.index[MetricBest], sol_file_df['Metric'][MetricBest], color='black', label='Best Solution')
     ax.legend()
     ax.set_xlabel('Solutions')
-    ax.set_ylabel('MSE')
+    plt.tight_layout()
+    fig.savefig(os.path.join(results_figure_dir, f'Metric_sol_evolution.pdf'), format='pdf', dpi=300)
+    # Cross-Validation metric
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(sol_file_df.index, sol_file_df['CV'], label='Train')
+    ax.plot(sol_file_df.index, sol_file_df['Test_CV'], label='Test')
+    ax.scatter(sol_file_df.index[CVbest], sol_file_df['CV'][CVbest], color='black', label='CV Best')
+    ax.legend()
+    ax.set_xlabel('Solutions')
+    ax.set_ylabel('Mean Squared Error')
     plt.tight_layout()
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
-
-    # Scatter plot of Cross-Validation and Test metric for the solutions found, highlightig the 2 bests, also adding the trendline
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.scatter(sol_file_df['CV'], sol_file_df['Test'], label='Solutions')
-    ax.scatter(sol_file_df['CV'][CVbest], sol_file_df['Test'][CVbest], color='black', marker='x', s=100, linewidths=2, label='Best CV')
-    ax.scatter(sol_file_df['CV'][Testbest], sol_file_df['Test'][Testbest], color='green', marker='x', s=100, linewidths=2, label='Best Test')
-    z = np.polyfit(sol_file_df['CV'], sol_file_df['Test'], 1)
-    p = np.poly1d(z)
-    ax.plot(sol_file_df['CV'], p(sol_file_df['CV']), 'r', label=f'Trendline {p}', linewidth=2)
+    # Annual correlation
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(sol_file_df.index, sol_file_df['RY'], label='Train')
+    ax.plot(sol_file_df.index, sol_file_df['Test_RY'], label='Test')
+    ax.scatter(sol_file_df.index[RYbest], sol_file_df['RY'][RYbest], color='black', label='RY Best')
     ax.legend()
-    ax.grid()
-    ax.set_xlabel('Cross-Validation MSE')
-    ax.set_ylabel('Test MSE')
+    ax.set_xlabel('Solutions')
+    ax.set_ylabel('Correlation')
     plt.tight_layout()
-    fig.savefig(os.path.join(results_figure_dir, f'CV_sol_scatter.pdf'), format='pdf', dpi=300)
+    fig.savefig(os.path.join(results_figure_dir, f'RY_sol_evolution.pdf'), format='pdf', dpi=300)
 
     # Compute correlations between the candidate variabels and the target variable
     years = np.arange(start_year, end_year, 1)
@@ -104,7 +109,7 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
     n_rows = len(column_names)
     n_cols = int(((sequence_length + final_sequence)*feat_sel).max())
     board_best = ut.create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel)
-    if model_kind == 'LinReg':
+    if model_kind == 'linreg':
         fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations_lag0, correlations_lag1, corr_report=True)
     else:
         fig_board = ut.plot_board(board_best, column_names, feat_sel, correlations_lag0, correlations_lag1)
@@ -382,14 +387,14 @@ def main(n_clusters, n_vars, n_idxs, results_folder, model_kind, basin, n_folds,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results of the feature selection and training')
+    parser.add_argument('--basin', type=str, default='GLB', help='Basin name')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
     parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--results_folder', type=str, help='Name of experiment and of the output folder where to store the results')
     parser.add_argument('--model_kind', type=str, help='Model kind')
-    parser.add_argument('--basin', type=str, default='GLB', help='Basin name')
     parser.add_argument('--n_folds', type=int, default=5, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
     parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
     args = parser.parse_args()
-    main(args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.basin, args.n_folds, args.start_year, args.end_year)
+    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.n_folds, args.start_year, args.end_year)

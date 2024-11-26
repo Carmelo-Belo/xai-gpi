@@ -40,7 +40,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
     target_df.index = pd.to_datetime(target_df.index)
 
     # Set the file names to store the solutions provided by the algorithm
-    output_dir = os.path.join(fs_dir, 'results', output_folder)
+    output_dir = os.path.join(fs_dir, 'results', basin, output_folder)
     os.makedirs(output_dir, exist_ok=True)
     indiv_path = os.path.join(output_dir, model_kind + '_' + experiment_filename)
     solution_filename = 'CRO_' + model_kind + '_' + experiment_filename # this file stores the last solution found by the algorithm
@@ -130,16 +130,20 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             Y_train_annual = Y_train.resample('Y').sum()
             train_corr, _ = pearsonr(Y_train_annual, Y_pred_train_annual)
             # Compute accuracy metric combining correlation and cross-validated MSE
-            nr_mse = (10 - (-cv_scores.mean())) / 10
-            acc_metric = nr_mse +  1 / train_corr #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
+            corr_term = 1 / (1 + np.exp(-train_corr))
+            acc_metric = -cv_scores.mean() +  1 / corr_term #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
             # Evaluate model on the test set
             Y_pred = clf.predict(X_test)
             test_mse = mean_squared_error(Y_test, Y_pred)
-            # test_r2 = r2_score(Y_test, Y_pred)
-            # print(f"Cross-validated MSE: {-cv_scores.mean()}")  # Negated to report positive MSE
-            # print(f"Test MSE: {test_mse}, Test R^2: {test_r2}")
+            Y_pred = pd.Series(Y_pred, index=Y_test.index)
+            Y_test_annual = Y_test.resample('Y').sum()
+            Y_pred_annual = Y_pred.resample('Y').sum()
+            test_corr, _ = pearsonr(Y_test_annual, Y_pred_annual)
+            acc_metric_test = test_mse + 1 / (1 + np.exp(-test_corr))
             # Prepare solution to save
-            sol_file = pd.concat([sol_file, pd.DataFrame({'Metric': [acc_metric], 'CV': [-cv_scores.mean()], 'RY': [train_corr], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
+            sol_file = pd.concat([sol_file, pd.DataFrame({'Metric': [acc_metric], 'CV': [-cv_scores.mean()], 'RY': [train_corr], 
+                                                          'Test_Metric': [test_mse], 'Test_CV': [acc_metric_test], 'Test_RY': [test_corr],
+                                                          'Sol': [solution]})], ignore_index=True)
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             

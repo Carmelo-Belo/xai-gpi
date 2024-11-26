@@ -16,7 +16,7 @@ def main(basin, n_vars, n_idxs):
 
     ## Selection trends without distinguishing in clusters (comparing all experiments, experiments filtered by cluster method, or by model fitted) ## 
     # List all the experiments containing the same candidates dataset
-    all_subfolders = os.listdir(results_dir)
+    all_subfolders = os.listdir(os.path.join(results_dir, basin))
     experiments_folders = [f for f in all_subfolders if f'nv{n_vars}_nd{n_idxs}' in f]
     experiments_folders.sort()
     # Define list to store experiments folders according to their charasteristics (clustering method, model kind)
