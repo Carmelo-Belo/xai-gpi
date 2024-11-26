@@ -73,12 +73,15 @@ class cluster_model:
             mean_clusters[i] = np.mean(self.data[self.labels==i], axis=0)
         return mean_clusters
 
-    def plot_clusters(cluster, data, latitudes, longitudes, mask, title):
+    def plot_clusters(basin, cluster, data, latitudes, longitudes, mask, title):
         ## FOR NOW ONLY PLOT ON GLOBAL MAP, NEED TO ADAPT FOR BASIN WISE PLOTTING -> mask and basin##
         north, south = latitudes[0], latitudes[-1]
         west, east = longitudes[0], longitudes[-1]
         fig = plt.figure(figsize=(30, 6))
-        ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+        if basin == 'NA':
+            ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+        else:
+            ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
 
         # Set the extent of the map
         ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
@@ -320,9 +323,9 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     latitudes = train_data.latitude.values
     longitudes = train_data.longitude.values
     if by_anomaly == True:
-        clusters_fig = cluster_model.plot_clusters(cluster, anomaly_res_masked, latitudes, longitudes, mask, var_name + ' anomaly')
+        clusters_fig = cluster_model.plot_clusters(basin, cluster, anomaly_res_masked, latitudes, longitudes, mask, var_name + ' anomaly')
     else:
-        clusters_fig = cluster_model.plot_clusters(cluster, data_res_masked, latitudes, longitudes, mask, var_name)
+        clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name)
 
     # Save the clusters figures in the output directory
     output_figs_dir = os.path.join(path_output, f'figures')

@@ -129,7 +129,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
             label_selected_vars.append(str(col) +'_lag'+ str(time_lags[c]+j))
 
     # Plot the clusters selected for each atmospheric variable at each time lag
-    ut.plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_figure_dir)
+    ut.plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, results_figure_dir)
 
     ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years

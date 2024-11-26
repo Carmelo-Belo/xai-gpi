@@ -90,7 +90,7 @@ def plot_board(board, column_names, feat_sel, correlations_lag0, correlations_la
     return fig
 
 # Function to plot the clusters selected for each variable at each time lag
-def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_figure_dir):
+def plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, results_figure_dir):
     # Create the subfolder of figure results to store the cluster selection figures
     save_figure_dir = os.path.join(results_figure_dir, 'clusters_selected')
     os.makedirs(save_figure_dir, exist_ok=True)
@@ -99,6 +99,24 @@ def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_fi
     variable_names = [var.split('_cluster')[0] for var in variables_with_cluster]
     variable_names = list(set(variable_names))
     variable_names.sort()
+
+    # Set the domain extension for the figures
+    if basin == 'NWP':
+        west, east, south, north = 100, 180, 0, 40
+    elif basin == 'NEP':
+        west, east, south, north = -180, -75, 0, 40
+    elif basin == 'NA':
+        west, east, south, north = -100, 0, 0, 40
+    elif basin == 'NI':
+        west, east, south, north = 45, 100, 0, 40
+    elif basin == 'SP':
+        west, east, south, north = 135, -70, -40, 0
+    elif basin == 'SI':
+        west, east, south, north = 35, 135, -40, 0
+    elif basin == 'GLB':
+        west, east, south, north = -181, 181, -40, 40
+    else:
+        raise ValueError('Basin not recognized')
 
     for v, var in enumerate(variable_names):
         # Load the labels file
@@ -119,10 +137,6 @@ def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_fi
         time_lags_selected = np.asarray([int(long_name.split('_lag')[1]) 
                                         for long_name in label_selected_vars if long_name.split('_cluster')[0] == var])
         
-        # Set the domain extension of the figures
-        north, south = label_df['nodes_lat'].iloc[0], label_df['nodes_lat'].iloc[-1]
-        west, east = label_df['nodes_lon'].iloc[0], label_df['nodes_lon'].iloc[-1]
-        
         # Cycle through the lags and select the clusters for each lag
         for lag in np.arange(2):
             clusters_for_lag = clusters_selected[time_lags_selected == lag] 
@@ -133,7 +147,10 @@ def plot_selected_clusters(n_clusters, label_selected_vars, data_dir, results_fi
                 
                 # Set the figure and gridlines of the map
                 fig = plt.figure(figsize=(30, 6))
-                ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+                if basin == 'NA':
+                    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+                else:
+                    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
                 ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
                 ax.coastlines(resolution='110m', linewidth=2)
                 ax.add_feature(cfeature.BORDERS, linestyle=':')
