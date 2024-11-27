@@ -117,7 +117,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             if model_kind == 'linreg':
                 clf = LinearRegression()
             elif model_kind == 'lgbm':
-                clf = LGBMRegressor(verbosity=-1)
+                clf = LGBMRegressor(verbosity=-1, n_estimators=50, max_depth=5, num_leaves=20, learning_rate=0.1)
             else:
                 raise ValueError("Model kind not recognized")
             # Apply cross validation
@@ -130,8 +130,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             Y_train_annual = Y_train.resample('Y').sum()
             train_corr, _ = pearsonr(Y_train_annual, Y_pred_train_annual)
             # Compute accuracy metric combining correlation and cross-validated MSE
-            corr_term = 1 / (1 + np.exp(-train_corr))
-            acc_metric = -cv_scores.mean() +  1 / corr_term #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
+            acc_metric = -cv_scores.mean() + 1 / (1 + np.exp(-train_corr)) #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
             # Evaluate model on the test set
             Y_pred = clf.predict(X_test)
             test_mse = mean_squared_error(Y_test, Y_pred)
