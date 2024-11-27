@@ -117,7 +117,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             if model_kind == 'linreg':
                 clf = LinearRegression()
             elif model_kind == 'lgbm':
-                clf = LGBMRegressor(verbosity=-1, n_estimators=50, max_depth=5, num_leaves=20, learning_rate=0.1)
+                clf = LGBMRegressor(verbosity=-1, n_estimators=25, max_depth=3, num_leaves=7, learning_rate=0.1, n_jobs=4)
             else:
                 raise ValueError("Model kind not recognized")
             # Apply cross validation
