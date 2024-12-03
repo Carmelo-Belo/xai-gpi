@@ -355,9 +355,12 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
             selected_vars_df_tot.iloc[:,1:max_columns-1] = selected_vars_df_tot.iloc[:,1:max_columns-1] + selected_vars_df.iloc[:,1:max_columns-1]
         else:
             selected_vars_df_tot.iloc[:,1:] = selected_vars_df_tot.iloc[:,1:] + selected_vars_df.iloc[:,1:]
-
-    fig = plt.figure(figsize=(10, 8))
-    gs = gridspec.GridSpec(2, 2, figure=fig)
+    
+    if n_clusters >= 10:
+        fig = plt.figure(figsize=(14, 8))
+    else:
+        fig = plt.figure(figsize=(10, 8))
+    gs = gridspec.GridSpec(2, 4, figure=fig)
     # Plot heatmaps for each lag for the cluster variables
     for l in range(n_lags):
         # Create dataframe for the heatmap
@@ -371,7 +374,7 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
                 cluster_var_heatmap_df.loc[r] = row
         cluster_var_heatmap_df.set_index('variables', inplace=True)
         # Plot the heatmap
-        ax = fig.add_subplot(gs[l])
+        ax = fig.add_subplot(gs[l*2:(l*2)+2])
         if display_percentage:
             cluster_var_heatmap_df = cluster_var_heatmap_df / len(experiments_folders) * 100
             vmax = 100
@@ -387,7 +390,7 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
             for text in ax.texts:
                 text.set_text(f"{(float(text.get_text())):.0f}%")
     # Plot the indexes heatmap
-    ax = fig.add_subplot(gs[3])
+    ax = fig.add_subplot(gs[5:7])
     idxs_var_heatmap_df = selected_vars_df_tot[selected_vars_df_tot['column_names'].isin(idx_vars)]
     idxs_var_heatmap_df.set_index('column_names', inplace=True)
     if display_percentage:

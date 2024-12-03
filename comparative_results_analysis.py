@@ -10,13 +10,14 @@ def main(basin, n_vars, n_idxs):
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     fs_dir = os.path.join(project_dir, 'FS_TCG')
     results_dir = os.path.join(fs_dir, 'results')
+    basin_results_dir = os.path.join(results_dir, basin)
     # Set the acronyms names of the cluster variables and the indexes
     atm_vars = ['abs_vo850', 'mpi', 'msl', 'r700', 'sst', 'vo850', 'vws850-200', 'w']
     idx_vars = ['EA-WR', 'ENSO3.4', 'EP-NP', 'NAO', 'PDO', 'PNA', 'SOI', 'TNA', 'TSA', 'WP']
 
     ## Selection trends without distinguishing in clusters (comparing all experiments, experiments filtered by cluster method, or by model fitted) ## 
     # List all the experiments containing the same candidates dataset
-    all_subfolders = os.listdir(os.path.join(results_dir, basin))
+    all_subfolders = os.listdir(basin_results_dir)
     experiments_folders = [f for f in all_subfolders if f'nv{n_vars}_nd{n_idxs}' in f]
     experiments_folders.sort()
     # Define list to store experiments folders according to their charasteristics (clustering method, model kind)
@@ -45,7 +46,7 @@ def main(basin, n_vars, n_idxs):
         numbers = filter(str.isdigit, nc_string)
         nc = ''.join(numbers)
         experiment_filename = f'1965-2022_{nc}clusters_{n_vars}vars_{n_idxs}idxs.csv'
-        best_solution = pd.read_csv(os.path.join(results_dir, experiment_name, f'best_solution_{model_kind}_{experiment_filename}'), sep=',', header=None)
+        best_solution = pd.read_csv(os.path.join(basin_results_dir, experiment_name, f'best_solution_{model_kind}_{experiment_filename}'), sep=',', header=None)
         if "A" in nc_string:
             data_dir = os.path.join(fs_dir, 'data', f'{basin}_{nc}clusters_anomaly')
         else:
@@ -81,34 +82,36 @@ def main(basin, n_vars, n_idxs):
     # Plot heatmaps for variable selection considering all experiments, and then all experiments for linear regression and LightGBM
     comp_results_dir = os.path.join(fs_dir, 'results', 'comparative_analysis')
     os.makedirs(comp_results_dir, exist_ok=True)
+    basin_comp = os.path.join(comp_results_dir, basin)
+    os.makedirs(basin_comp, exist_ok=True)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders, selected_vars_df_list, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'all_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'all_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_linreg, selected_vars_df_list_linreg, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'linreg_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'linreg_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_lgbm, selected_vars_df_list_lgbm, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'lgbm_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'lgbm_heatmaps_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     # Plot heatmaps for variable selection considering all experiments, and then all experiments for linear regression and LightGBM when adopting non-anomaly clustering
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_NC, selected_vars_df_list_NC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'all_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'all_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_linreg_NC, selected_vars_df_list_linreg_NC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'linreg_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'linreg_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_lgbm_NC, selected_vars_df_list_lgbm_NC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'lgbm_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'lgbm_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     # Plot heatmaps for variable selection considering all experiments, and then all experiments for linear regression and LightGBM when adopting anomaly clustering
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_AC, selected_vars_df_list_AC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'all_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'all_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_linreg_AC, selected_vars_df_list_linreg_AC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'linreg_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'linreg_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
     heatmap = ut.vars_selection_heatmaps_no_cluster(experiments_folders_lgbm_AC, selected_vars_df_list_lgbm_AC, atm_vars, idx_vars, display_percentage=True)
-    heatmap.savefig(os.path.join(comp_results_dir, f'lgbm_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
+    heatmap.savefig(os.path.join(basin_comp, f'lgbm_heatmaps_AC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
     plt.close(heatmap)
 
     ## Selection trends taking the clusters into account (comparing all experiments for each number of clusters, but also filtering by clustering method, and by model fitted) ##
@@ -138,6 +141,7 @@ def main(basin, n_vars, n_idxs):
             numbers = filter(str.isdigit, nc_string)
             nc = ''.join(numbers)
             experiment_filename = f'1965-2022_{nc}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+            best_solution = pd.read_csv(os.path.join(basin_results_dir, experiment_name, f'best_solution_{model_kind}_{experiment_filename}'), sep=',', header=None)
             if "A" in nc_string:
                 data_dir = os.path.join(fs_dir, 'data', f'{basin}_{nc}clusters_anomaly')
             else:
@@ -164,7 +168,8 @@ def main(basin, n_vars, n_idxs):
                     experiments_folders_lgbm_NC.append(experiment_name)
                     selected_vars_df_list_lgbm_NC.append(selected_vars_df)
         # Plot heatmaps for variable selection considering all experiments, and then all experiments for linear regression and LightGBM when adopting non-anomaly clustering
-        sub_comp_results_dir = os.path.join(comp_results_dir, f'{basin}_{n_cluster}clusters')
+        sub_comp_results_dir = os.path.join(basin_comp, f'{n_cluster}clusters')
+        os.makedirs(sub_comp_results_dir, exist_ok=True)
         heatmap = ut.vars_selection_heatmaps(experiments_folders_NC, n_cluster, selected_vars_df_list_NC, atm_vars, idx_vars, display_percentage=True)
         heatmap.savefig(os.path.join(sub_comp_results_dir, f'all_heatmaps_NC_{n_vars}vars_{n_idxs}idxs.pdf'), format='pdf', dpi=300)
         plt.close(heatmap)
