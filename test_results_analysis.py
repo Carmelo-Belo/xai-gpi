@@ -138,6 +138,12 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     # Plot the clusters selected for each atmospheric variable at each time lag
     ut.plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, results_figure_dir)
 
+     # Compone the dataset to train the model using all predictors possible
+    dataset_opt_noFS = target_df.copy()
+    for l in range(2):
+        for var in predictors_df.columns:
+            dataset_opt_noFS[f'{var}_lag{l}'] = predictors_df[var].shift(l)
+
     ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years
     kfold = KFold(n_splits=n_folds)
@@ -163,10 +169,10 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         train_dataset = dataset_opt[train_indices]
         test_dataset = dataset_opt[test_indices]
         # Split the entire dataset 
-        train_indices_noFS = predictors_df.index.year.isin(train_years)
-        test_indices_noFS = predictors_df.index.year.isin(test_years)
-        train_dataset_noFS = predictors_df[train_indices_noFS]
-        test_dataset_noFS = predictors_df[test_indices_noFS]
+        train_indices_noFS = dataset_opt_noFS.index.year.isin(train_years)
+        test_indices_noFS = dataset_opt_noFS.index.year.isin(test_years)
+        train_dataset_noFS = dataset_opt_noFS[train_indices_noFS]
+        test_dataset_noFS = dataset_opt_noFS[test_indices_noFS]
 
         # Standardize the optimized dataset
         X_train = train_dataset[train_dataset.columns.drop([Y_column])]
