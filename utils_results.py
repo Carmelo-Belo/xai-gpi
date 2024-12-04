@@ -361,6 +361,9 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
     else:
         fig = plt.figure(figsize=(10, 8))
     gs = gridspec.GridSpec(2, 4, figure=fig)
+    # Dataframe to keep track of the variables that are chosen 60% of the time
+    sel_vars_60 = pd.DataFrame(columns=['lag', 'selected_vars'])
+    sel_vars_60.set_index('lag', inplace=True)
     # Plot heatmaps for each lag for the cluster variables
     for l in range(n_lags):
         # Create dataframe for the heatmap
@@ -389,6 +392,10 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
         if display_percentage:
             for text in ax.texts:
                 text.set_text(f"{(float(text.get_text())):.0f}%")
+        # Add to the sel_vars_60 df list the variables that are selected 60% of the time for each lag
+        matches_60 = cluster_var_heatmap_df >= 60
+        result = [f'{index}_{col}' for index, row in matches_60.iterrows() for col in row.index if row[col]]
+        sel_vars_60.loc[l] = [result]
     # Plot the indexes heatmap
     ax = fig.add_subplot(gs[5:7])
     idxs_var_heatmap_df = selected_vars_df_tot[selected_vars_df_tot['column_names'].isin(idx_vars)]
@@ -404,7 +411,18 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
             text.set_text(f"{(float(text.get_text())):.0f}%")
 
     fig.set_tight_layout(True)
-    return fig
+    # Add to the sel_vars_60 df list the indexes that are selected 60% of the time for each lag
+    matches_60 = idxs_var_heatmap_df >= 60
+    for l in range(n_lags):
+        lag_sel = idxs_var_heatmap_df[f'lag_{l}'][matches_60[f'lag_{l}']].index.to_list()
+        current_sel = sel_vars_60.loc[l].values.tolist()[0]
+        if len(lag_sel) > 0:
+            new_sel = current_sel + lag_sel
+        else:
+            new_sel = current_sel
+        sel_vars_60.loc[l] = [new_sel] 
+
+    return fig, sel_vars_60
 
 # Function to plot the heatmaps for variable selection without considering the clusters
 # So in case of cluster variables, the selection is counted if at least one cluster is selected
