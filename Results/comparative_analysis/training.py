@@ -1,5 +1,6 @@
 import os
 import argparse
+import ast
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,10 +24,10 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     # Set directories according to the clusters type
     if clusters_type == 'AC':
         cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
-        figures_folder = f'ms_features_AC_model'
+        figures_folder = f'{model_kind}_ms_features_AC_model'
     elif clusters_type == 'NC':
         cluster_data = f'{basin}_{n_clusters}clusters'
-        figures_folder = f'ms_features_NC_model'
+        figures_folder = f'{model_kind}_ms_features_NC_model'
     else:
         raise ValueError('The clusters type should be either AC or NC')
 
@@ -37,13 +38,33 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     data_dir = os.path.join(fs_dir, 'data', cluster_data)
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)
-    output_dir = os.path.join(fs_dir, 'results', 'comparative_results', basin, f'{n_clusters}clusters', figures_folder)
+    output_dir = os.path.join(fs_dir, 'results', 'comparative_analysis', basin, f'{n_clusters}clusters', figures_folder)
 
     # Load the predictors and the target in a DataFrame
     predictors_df = pd.read_csv(predictors_path, index_col=0)
     predictors_df.index = pd.to_datetime(predictors_df.index)
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
+
+    # Load the dataset containing the most selected variables
+    selected_vars_filename = f'{model_kind}_60%selvar_{clusters_type}_{n_vars}vars_{n_idxs}idxs.csv'
+    selected_vars_path = os.path.join(fs_dir, 'results', 'comparative_analysis', basin, f'{n_clusters}clusters', selected_vars_filename)
+    selected_vars = pd.read_csv(selected_vars_path, index_col="lag")
+    for l in range(len(selected_vars)):
+        selected_vars.loc[l] = [ast.literal_eval(selected_vars.loc[l].values[0])]
+
+    # Compone the dataset to train the model from the predictors_df and the selected variables
+    dataset_opt = target_df.copy()
+    for r, row in selected_vars.iterrows():
+        variables = row[1].values[0]
+        for var in variables:
+            dataset_opt[f'{var}_lag{r}'] = predictors_df[var].shift(r)
+    
+    # Compone the dataset to train the model using all predictors possible
+    dataset_opt_noFS = target_df.copy()
+    for l in range(len(selected_vars)):
+        for var in predictors_df.columns:
+            dataset_opt_noFS[f'{var}_lag{l}'] = predictors_df[var].shift(l)
 
     ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years
@@ -71,10 +92,10 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         train_dataset = dataset_opt[train_indices]
         test_dataset = dataset_opt[test_indices]
         # Split the entire dataset 
-        train_indices_noFS = predictors_df.index.year.isin(train_years)
-        test_indices_noFS = predictors_df.index.year.isin(test_years)
-        train_dataset_noFS = predictors_df[train_indices_noFS]
-        test_dataset_noFS = predictors_df[test_indices_noFS]
+        train_indices_noFS = dataset_opt_noFS.index.year.isin(train_years)
+        test_indices_noFS = dataset_opt_noFS.index.year.isin(test_years)
+        train_dataset_noFS = dataset_opt_noFS[train_indices_noFS]
+        test_dataset_noFS = dataset_opt_noFS[test_indices_noFS]
 
         # Standardize the optimized dataset
         X_train = train_dataset[train_dataset.columns.drop([Y_column])]
@@ -266,12 +287,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results of the feature selection and training')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin name')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('--clusters_type', type=str, help='Type of clusters (AC or NC)')
     parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
-    parser.add_argument('--results_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, help='Model kind')
+    parser.add_argument('--model_kind', type=str, help='Model kind (all, linreg, lgbm)')
     parser.add_argument('--n_folds', type=int, default=5, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
     parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.n_folds, args.start_year, args.end_year)
+    main(args.basin, args.n_clusters, args.clusters_type, args.n_vars, args.n_idxs, args.model_kind, args.n_folds, args.start_year, args.end_year)
