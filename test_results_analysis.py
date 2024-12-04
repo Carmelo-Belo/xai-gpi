@@ -138,11 +138,12 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     # Plot the clusters selected for each atmospheric variable at each time lag
     ut.plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, results_figure_dir)
 
-     # Compone the dataset to train the model using all predictors possible
+    # Compone the dataset to train the model using all predictors possible
     dataset_opt_noFS = target_df.copy()
     for l in range(2):
         for var in predictors_df.columns:
-            dataset_opt_noFS[f'{var}_lag{l}'] = predictors_df[var].shift(l)
+            col_df = pd.DataFrame(predictors_df[var].shift(l).values, index=dataset_opt_noFS.index, columns=[f'{var}_lag{l}'])
+            dataset_opt_noFS = pd.concat([dataset_opt_noFS, col_df], axis=1)
 
     ## Train MLPregressor with the best solution found ##
     # Cross-Validation for train and test years
@@ -186,10 +187,10 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         X_train = pd.DataFrame(X_std_train, columns=X_train.columns, index=X_train.index)
         X_test = pd.DataFrame(X_std_test, columns=X_test_fold.columns, index=X_test_fold.index)
         # Standardize the entire dataset
-        X_train_noFS = train_dataset_noFS
-        Y_train_noFS = Y_train
-        X_test_fold_noFS = test_dataset_noFS
-        Y_test_fold_noFS = Y_test_fold
+        X_train_noFS = train_dataset_noFS[train_dataset_noFS.columns.drop([Y_column])]
+        Y_train_noFS = train_dataset_noFS[Y_column]
+        X_test_fold_noFS = test_dataset_noFS[test_dataset_noFS.columns.drop([Y_column])]
+        Y_test_fold_noFS = test_dataset_noFS[Y_column]
         scaler_noFS = preprocessing.MinMaxScaler()
         X_std_train_noFS = scaler_noFS.fit(X_train_noFS)
         X_std_train_noFS = scaler_noFS.transform(X_train_noFS)
