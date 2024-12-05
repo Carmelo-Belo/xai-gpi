@@ -56,7 +56,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     # Compone the dataset to train the model from the predictors_df and the selected variables
     dataset_opt = target_df.copy()
     for r, row in selected_vars.iterrows():
-        variables = row[1].values[0]
+        variables = row[0]
         for var in variables:
             dataset_opt[f'{var}_lag{r}'] = predictors_df[var].shift(r)
     
@@ -256,13 +256,13 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     plt.savefig(os.path.join(output_dir, f'seasonality.pdf'), format='pdf', dpi=300)
 
     # Compare annual accumulated number of TCs
-    Y_test_annual = Y_test.resample('YE').sum()
-    Y_pred_MLP_annual = Y_pred_MLP.resample('YE').sum()
-    Y_pred_XGB_annual = Y_pred_XGB.resample('YE').sum()
-    Y_pred_LGBM_annual = Y_pred_LGBM.resample('YE').sum()
-    Y_pred_MLP_noFS_annual = Y_pred_MLP_noFS.resample('YE').sum()
-    Y_pred_XGB_noFS_annual = Y_pred_XGB_noFS.resample('YE').sum()
-    Y_pred_LGBM_noFS_annual = Y_pred_LGBM_noFS.resample('YE').sum()
+    Y_test_annual = Y_test.resample('A').sum()
+    Y_pred_MLP_annual = Y_pred_MLP.resample('A').sum()
+    Y_pred_XGB_annual = Y_pred_XGB.resample('A').sum()
+    Y_pred_LGBM_annual = Y_pred_LGBM.resample('A').sum()
+    Y_pred_MLP_noFS_annual = Y_pred_MLP_noFS.resample('A').sum()
+    Y_pred_XGB_noFS_annual = Y_pred_XGB_noFS.resample('A').sum()
+    Y_pred_LGBM_noFS_annual = Y_pred_LGBM_noFS.resample('A').sum()
     rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_MLP_annual['tcg'])
     rY_xgb, _ = pearsonr(Y_test_annual, Y_pred_XGB_annual['tcg'])
     rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_LGBM_annual['tcg'])
@@ -286,11 +286,11 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results of the feature selection and training')
-    parser.add_argument('--basin', type=str, default='GLB', help='Basin name')
+    parser.add_argument('--basin', type=str, help='Basin name')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
     parser.add_argument('--clusters_type', type=str, help='Type of clusters (AC or NC)')
-    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--n_vars', type=int, default=8, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, default=10, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--model_kind', type=str, help='Model kind (all, linreg, lgbm)')
     parser.add_argument('--n_folds', type=int, default=5, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')

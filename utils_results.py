@@ -349,7 +349,7 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
     n_lags = max_columns - 1
     selected_vars_df_tot = pd.DataFrame({'column_names': selected_vars_df_list[0]['column_names']})
     for l in range(n_lags):
-        selected_vars_df_tot[f'lag_{l}'] = 0
+        selected_vars_df_tot[f'lag_{l}'] = 0.0
     for s, selected_vars_df in enumerate(selected_vars_df_list):
         if len(selected_vars_df.columns) < max_columns:
             selected_vars_df_tot.iloc[:,1:max_columns-1] = selected_vars_df_tot.iloc[:,1:max_columns-1] + selected_vars_df.iloc[:,1:max_columns-1]
