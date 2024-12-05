@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers.legacy import Adam
+from keras.optimizers import Adam
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, KFold
