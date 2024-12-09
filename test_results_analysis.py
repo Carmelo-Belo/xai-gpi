@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.callbacks import EarlyStopping
 from keras.optimizers.legacy import Adam
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -210,7 +211,8 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
             Dense(units=1)
         ])
         mlpreg.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-        history = mlpreg.fit(x=X_t, y=Y_t, validation_data=(X_v, Y_v), epochs=100, batch_size=32, verbose=0)
+        callback = EarlyStopping(monitor='val_loss', patience=10)
+        history = mlpreg.fit(x=X_t, y=Y_t, validation_data=(X_v, Y_v), epochs=100, batch_size=32, verbose=0, callbacks=[callback])
         Y_pred_fold = mlpreg.predict(X_test)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_MLP = pd.concat([Y_pred_MLP, Y_pred_fold])
@@ -223,7 +225,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
             Dense(units=1)
         ])
         mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-        history_noFS = mlpreg_noFS.fit(x=X_t_noFS, y=Y_t_noFS, validation_data=(X_v_noFS, Y_v_noFS), epochs=100, batch_size=32, verbose=0)
+        history_noFS = mlpreg_noFS.fit(x=X_t_noFS, y=Y_t_noFS, validation_data=(X_v_noFS, Y_v_noFS), epochs=100, batch_size=32, verbose=0, callbacks=[callback])
         Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_MLP_noFS = pd.concat([Y_pred_MLP_noFS, Y_pred_fold_noFS])
@@ -237,7 +239,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
         ## XGBoost ##
         # Build, compile and train the xgboost regressor for the optimized dataset
-        xgboost = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror')
+        xgboost = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
         xgboost.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], verbose=False)
         Y_pred_fold_xgb = xgboost.predict(X_test)
         Y_pred_fold_xgb = pd.DataFrame(Y_pred_fold_xgb, index=Y_test_fold.index, columns=['tcg'])
@@ -245,7 +247,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         # Evaluate the model for the optimized dataset
         loss_xgb = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_xgb))
         # Build, compile and train the xgboost regressor for the entire dataset
-        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror')
+        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
         xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], verbose=False)
         Y_pred_fold_xgb_noFS = xgboost_noFS.predict(X_test_noFS)
         Y_pred_fold_xgb_noFS = pd.DataFrame(Y_pred_fold_xgb_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
@@ -259,7 +261,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
         ## LightGBM ##
         # Build, compile and train the lightgbm regressor for the optimized dataset
-        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1)
+        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1, early_stopping_rounds=10)
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)])
         Y_pred_fold_lgbm = lgbm.predict(X_test)
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
@@ -267,7 +269,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         # Evaluate the model for the optimized dataset
         loss_lgbm = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_lgbm))
         # Build, compile and train the lightgbm regressor for the entire dataset
-        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1)
+        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1, early_stopping_rounds=10)
         lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)])
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
