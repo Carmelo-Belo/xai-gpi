@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -24,10 +25,10 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     # Set directories according to the clusters type
     if clusters_type == 'AC':
         cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
-        figures_folder = f'{model_kind}_ms_features_AC_model'
+        figures_folder = f'msfm_fit{model_kind}_AC_nf{n_folds}_nv{n_vars}_nd{n_idxs}'
     elif clusters_type == 'NC':
         cluster_data = f'{basin}_{n_clusters}clusters'
-        figures_folder = f'{model_kind}_ms_features_NC_model'
+        figures_folder = f'msfm_fit{model_kind}_NC_nf{n_folds}_nv{n_vars}_nd{n_idxs}'
     else:
         raise ValueError('The clusters type should be either AC or NC')
 
@@ -133,12 +134,13 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
             Dense(units=1)
         ])
         mlpreg.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-        history = mlpreg.fit(x=X_t, y=Y_t, validation_data=(X_v, Y_v), epochs=100, batch_size=32, verbose=0)
+        callback = EarlyStopping(monitor='val_loss', patience=10)
+        history = mlpreg.fit(x=X_t, y=Y_t, validation_data=(X_v, Y_v), epochs=100, batch_size=32, verbose=0, callbacks=[callback])
         Y_pred_fold = mlpreg.predict(X_test)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_MLP = pd.concat([Y_pred_MLP, Y_pred_fold])
         # Evaluate the model for the optimized dataset
-        loss = mlpreg.evaluate(X_test, Y_test_fold)
+        loss = mlpreg.evaluate(X_test, Y_test_fold, verbose=0)
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
         mlpreg_noFS = Sequential([
@@ -146,12 +148,12 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
             Dense(units=1)
         ])
         mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.01), loss='mse')
-        history_noFS = mlpreg_noFS.fit(x=X_t_noFS, y=Y_t_noFS, validation_data=(X_v_noFS, Y_v_noFS), epochs=100, batch_size=32, verbose=0)
+        history_noFS = mlpreg_noFS.fit(x=X_t_noFS, y=Y_t_noFS, validation_data=(X_v_noFS, Y_v_noFS), epochs=100, batch_size=32, verbose=0, callbacks=[callback])
         Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
         Y_pred_MLP_noFS = pd.concat([Y_pred_MLP_noFS, Y_pred_fold_noFS])
         # Evaluate the model for the entire dataset
-        loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, Y_test_fold_noFS)
+        loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, Y_test_fold_noFS, verbose=0)
         # Plot the training and validation loss for the 2 models
         loss_figure_dir = os.path.join(output_dir, 'models_losses')
         os.makedirs(loss_figure_dir, exist_ok=True)
@@ -160,7 +162,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
 
         ## XGBoost ##
         # Build, compile and train the xgboost regressor for the optimized dataset
-        xgboost = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror')
+        xgboost = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
         xgboost.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], verbose=False)
         Y_pred_fold_xgb = xgboost.predict(X_test)
         Y_pred_fold_xgb = pd.DataFrame(Y_pred_fold_xgb, index=Y_test_fold.index, columns=['tcg'])
@@ -168,7 +170,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         # Evaluate the model for the optimized dataset
         loss_xgb = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_xgb))
         # Build, compile and train the xgboost regressor for the entire dataset
-        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror')
+        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
         xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], verbose=False)
         Y_pred_fold_xgb_noFS = xgboost_noFS.predict(X_test_noFS)
         Y_pred_fold_xgb_noFS = pd.DataFrame(Y_pred_fold_xgb_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
@@ -182,7 +184,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
 
         ## LightGBM ##
         # Build, compile and train the lightgbm regressor for the optimized dataset
-        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression', verbosity=-1)
+        lgbm = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1, early_stopping_rounds=10)
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)])
         Y_pred_fold_lgbm = lgbm.predict(X_test)
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
@@ -190,7 +192,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         # Evaluate the model for the optimized dataset
         loss_lgbm = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_lgbm))
         # Build, compile and train the lightgbm regressor for the entire dataset
-        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='regression', verbosity=-1)
+        lgbm_noFS = LGBMRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='regression', verbosity=-1, early_stopping_rounds=10)
         lgbm_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)])
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
@@ -201,6 +203,18 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         fig = ut.plot_train_val_loss(lgbm.evals_result_['training']['l2'], lgbm.evals_result_['valid_1']['l2'], 
                                     lgbm_noFS.evals_result_['training']['l2'], lgbm_noFS.evals_result_['valid_1']['l2'], loss_lgbm, loss_lgbm_noFS)
         fig.savefig(os.path.join(loss_figure_dir, f'LGBM_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
+
+    # Create a where to store the info of the trainings and the performances of the models in terms of correlation
+    performance_df_file = os.path.join(fs_dir, 'results', 'comparative_analysis', f'msfm_performance_{basin}.csv')
+    performance_columns = ['experiment', 'model', 'n_clusters', 'clusters_type', 'n_folds', 'n_vars', 'n_idxs', 'tl_mlp', 'tl_mlp_noFS', 'tl_lgbm', 'tl_lgbm_noFS',
+                            'tl_xgb', 'tl_xgb_noFS', 'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_xgb', 'R_xgb_noFS', 'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 
+                            'R_S_lgbm_noFS', 'R_S_xgb', 'R_S_xgb_noFS', 'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_xgb', 'R_Y_xgb_noFS']
+    experiment_name = f'msfm_fit{model_kind}_{clusters_type}{n_clusters}_nf{n_folds}_nv{n_vars}_nd{n_idxs}'
+    if os.path.exists(performance_df_file):
+        performance_df = pd.read_csv(performance_df_file, index_col=0)
+    else:
+        performance_df = pd.DataFrame(columns=performance_columns)
+        performance_df.set_index('experiment', inplace=True)
 
     # Compare observations to predictions
     r_mlp, _ = pearsonr(Y_test, Y_pred_MLP['tcg'])
@@ -283,6 +297,43 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f'annual_evolution.pdf'), format='pdf', dpi=300)
+
+    # Save the information of the models' performance in the performance DataFrame
+    row_data = {
+        'experiment': experiment_name,
+        'model': model_kind,
+        'n_clusters': n_clusters,
+        'clusters_type': clusters_type,
+        'n_folds': n_folds,
+        'n_vars': n_vars,
+        'n_idxs': n_idxs,
+        'tl_mlp': loss,
+        'tl_mlp_noFS': loss_noFS,
+        'tl_lgbm': loss_lgbm,
+        'tl_lgbm_noFS': loss_lgbm_noFS,
+        'tl_xgb': loss_xgb,
+        'tl_xgb_noFS': loss_xgb_noFS,
+        'R_mlp': r_mlp,
+        'R_mlp_noFS': r_mlp_noFS,
+        'R_lgbm': r_lgbm,
+        'R_lgbm_noFS': r_lgbm_noFS,
+        'R_xgb': r_xgb,
+        'R_xgb_noFS': r_xgb_noFS,
+        'R_S_mlp': rS_mlp,
+        'R_S_mlp_noFS': rS_mlp_noFS,
+        'R_S_lgbm': rS_lgbm,
+        'R_S_lgbm_noFS': rS_lgbm_noFS,
+        'R_S_xgb': rS_xgb,
+        'R_S_xgb_noFS': rS_xgb_noFS,
+        'R_Y_mlp': rY_mlp,
+        'R_Y_mlp_noFS': rY_mlp_noFS,
+        'R_Y_lgbm': rY_lgbm,
+        'R_Y_lgbm_noFS': rY_lgbm_noFS,
+        'R_Y_xgb': rY_xgb,
+        'R_Y_xgb_noFS': rY_xgb_noFS
+    }
+    performance_df.loc[experiment_name] = row_data
+    performance_df.to_csv(performance_df_file)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results of the feature selection and training')
