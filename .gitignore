@@ -1,6 +1,13 @@
 
 Data/Paper/local_variables.csv
 Data/Paper/locals_variables.csv
+results/comparative_analysis/GLB/
+results/comparative_analysis/NA/
+results/comparative_analysis/NEP/
+results/comparative_analysis/NWP/
+results/comparative_analysis/NI/
+results/comparative_analysis/SP/
+results/comparative_analysis/SI/
 *.DS_Store
 
 # Byte-compiled / optimized / DLL files
