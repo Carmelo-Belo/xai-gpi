@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.callbacks import EarlyStopping
+from keras.regularizers import l2
 from keras.optimizers import Adam
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -130,7 +131,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         # Build, compile and train the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
         mlpreg = Sequential([
-            Dense(units=n_predictors*2, activation='relu', input_shape=(n_predictors,)),
+            Dense(units=64, activation='relu', input_shape=(n_predictors,), kernel_regularizer=l2(0.001)),
             Dense(units=1)
         ])
         mlpreg.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
@@ -144,10 +145,10 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
         mlpreg_noFS = Sequential([
-            Dense(units=n_predictors_noFS*2, activation='relu', input_shape=(n_predictors_noFS,)),
+            Dense(units=64, activation='relu', input_shape=(n_predictors_noFS,), kernel_regularizer=l2(0.001)),
             Dense(units=1)
         ])
-        mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.01), loss='mse')
+        mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
         history_noFS = mlpreg_noFS.fit(x=X_t_noFS, y=Y_t_noFS, validation_data=(X_v_noFS, Y_v_noFS), epochs=100, batch_size=32, verbose=0, callbacks=[callback])
         Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
@@ -170,7 +171,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         # Evaluate the model for the optimized dataset
         loss_xgb = np.sqrt(mean_squared_error(Y_test_fold, Y_pred_fold_xgb))
         # Build, compile and train the xgboost regressor for the entire dataset
-        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
+        xgboost_noFS = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=3, objective='reg:squarederror', early_stopping_rounds=10)
         xgboost_noFS.fit(X_t_noFS, Y_t_noFS, eval_set=[(X_t_noFS, Y_t_noFS), (X_v_noFS, Y_v_noFS)], verbose=False)
         Y_pred_fold_xgb_noFS = xgboost_noFS.predict(X_test_noFS)
         Y_pred_fold_xgb_noFS = pd.DataFrame(Y_pred_fold_xgb_noFS, index=Y_test_fold_noFS.index, columns=['tcg'])
@@ -206,9 +207,9 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
 
     # Create a where to store the info of the trainings and the performances of the models in terms of correlation
     performance_df_file = os.path.join(fs_dir, 'results', 'comparative_analysis', f'msfm_performance_{basin}.csv')
-    performance_columns = ['experiment', 'model', 'n_clusters', 'clusters_type', 'n_folds', 'n_vars', 'n_idxs', 'tl_mlp', 'tl_mlp_noFS', 'tl_lgbm', 'tl_lgbm_noFS',
-                            'tl_xgb', 'tl_xgb_noFS', 'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_xgb', 'R_xgb_noFS', 'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 
-                            'R_S_lgbm_noFS', 'R_S_xgb', 'R_S_xgb_noFS', 'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_xgb', 'R_Y_xgb_noFS']
+    performance_columns = ['experiment', 'model', 'n_clusters', 'clusters_type', 'n_folds', 'n_vars', 'n_idxs', 'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 
+                           'R_xgb', 'R_xgb_noFS', 'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 'R_S_xgb', 'R_S_xgb_noFS', 'R_Y_mlp', 'R_Y_mlp_noFS', 
+                           'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_xgb', 'R_Y_xgb_noFS']
     experiment_name = f'msfm_fit{model_kind}_{clusters_type}{n_clusters}_nf{n_folds}_nv{n_vars}_nd{n_idxs}'
     if os.path.exists(performance_df_file):
         performance_df = pd.read_csv(performance_df_file, index_col=0)
@@ -307,12 +308,6 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
         'n_folds': n_folds,
         'n_vars': n_vars,
         'n_idxs': n_idxs,
-        'tl_mlp': loss,
-        'tl_mlp_noFS': loss_noFS,
-        'tl_lgbm': loss_lgbm,
-        'tl_lgbm_noFS': loss_lgbm_noFS,
-        'tl_xgb': loss_xgb,
-        'tl_xgb_noFS': loss_xgb_noFS,
         'R_mlp': r_mlp,
         'R_mlp_noFS': r_mlp_noFS,
         'R_lgbm': r_lgbm,

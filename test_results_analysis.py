@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.callbacks import EarlyStopping
+from keras.regularizers import l2
 from keras.optimizers.legacy import Adam
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -207,7 +208,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         # Build, compile and train the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
         mlpreg = Sequential([
-            Dense(units=n_predictors*2, activation='relu', input_shape=(n_predictors,)),
+            Dense(units=64, activation='relu', input_shape=(n_predictors,), kernel_regularizer=l2(0.001)),
             Dense(units=1)
         ])
         mlpreg.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
@@ -221,7 +222,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
         mlpreg_noFS = Sequential([
-            Dense(units=n_predictors_noFS*2, activation='relu', input_shape=(n_predictors_noFS,)),
+            Dense(units=64, activation='relu', input_shape=(n_predictors_noFS,), kernel_regularizer=l2(0.001)),
             Dense(units=1)
         ])
         mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
