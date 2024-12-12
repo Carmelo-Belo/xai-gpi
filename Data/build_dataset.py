@@ -5,10 +5,10 @@ from utils_dataset import build_dataset
 def main(basin, n_clusters, anomaly_clustering, res, first_year, last_year):
     # List of variables to include for the feature selection process
     cluster_variables = ['abs_vo850', 'mpi', 'msl', 'r700', 'sst', 'vo850', 'vws850-200', 'w']
-    climate_indexes = ['EA-WR', 'ENSO3.4', 'EP-NP', 'NAO', 'PDO', 'PNA', 'SOI', 'TNA', 'TSA', 'WP']
+    climate_indexes = ['EA-WR', 'ENSO3.4', 'NAO', 'PDO', 'PNA', 'SOI', 'TNA', 'TSA', 'WP'] # EP-NP is equal to -99.9 on december
 
     # Directories to consider to build the dataset for feature selection
-    project_dir = '/home/simul6/Documentos/Filippo/'
+    project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     if anomaly_clustering == 'y':
         cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters_anomaly')
     else:

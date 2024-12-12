@@ -19,6 +19,9 @@ import os
 import argparse
 
 def loss_gpi_informed(y_true, y_pred, gpi):
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    gpi = tf.cast(gpi, tf.float32)
     # Compute the mse between the true and predicted values
     mse_pred = tf.reduce_mean(tf.square(y_true - y_pred))
     # Compute the mse between the true values and the gpis
@@ -70,7 +73,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
     solution_filename = 'CRO_' + model_kind + '_' + experiment_filename # this file stores the last solution found by the algorithm
 
     # Create an empty file to store the solutions provided by the algorithm
-    sol_data = pd.DataFrame(columns=['Metric', 'CV', 'RY', 'Test', 'Sol'])
+    sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
     sol_data.to_csv(indiv_path, sep=' ', header=sol_data.columns, index=None)
 
     # Split the dataset into train and test
@@ -91,7 +94,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
 
             # We set the limits of the vector (window size, time lags and variable selection)
             # Maximum time sequences I can select is 2, maximum time lag is 1 month, and the last one is regarding the binary selection of a variable
-            self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
+            self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
             self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
 
             super().__init__(self.size, self.opt, self.sup_lim, self.inf_lim)
@@ -154,8 +157,8 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
                 Y_train_fold, Y_val_fold = Y_train.iloc[train_index], Y_train.iloc[val_index]
                 gpi_pi_train_fold, gpi_pi_val_fold = gpi_pi_train.iloc[train_index], gpi_pi_train.iloc[val_index]
                 # Define the model and compile it
-                inputs = Input(shape=(X_train.columns,))
-                x = layers.Dense(64, activation='relu', kernel_regularizers=regularizers.l2(0.001))(inputs)
+                inputs = Input(shape=(len(X_train.columns),))
+                x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
                 output = layers.Dense(1)(x)
                 model = PI_model(inputs, output)
                 model.compile(optimizer=optimizers.Adam(learning_rate=0.001))
@@ -167,32 +170,21 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
                 history = model.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
                 # Evaluate model
                 cv_scores.append(history.history['loss'][-1])
-                test_losses.append(model.evaluate(X_test.values, (Y_test.values, gpi_pi_test.values), verbose=0)[0])
-                Y_pred_train.loc[X_train_fold.index] = model.predict(X_train_fold)
-                Y_pred_test.loc[X_test.index] = model.predict(X_test)
+                test_losses.append(model.evaluate(X_test.values, (Y_test.values, gpi_pi_test.values), verbose=0))
+                Y_pred_train.loc[X_train_fold.index] = model.predict(X_train_fold).reshape(-1)
+                Y_pred_test.loc[X_test.index] = model.predict(X_test).reshape(-1)
                 fold += 1
             
-            # Compute the yearly correlation on the train set
-            Y_pred_train_annual = Y_pred_train.resample('Y').sum()
-            Y_train_annual = Y_train.resample('Y').sum()
-            train_corr, _ = pearsonr(Y_train_annual, Y_pred_train_annual)
             # Compute accuracy metric combining correlation and cross-validated MSE
             cv_score = np.array(cv_scores).mean()
-            acc_metric = cv_score + 1 / (1 + np.exp(-train_corr)) #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
             # Evaluate model on the test set
             test_loss = np.array(test_losses).mean()
-            Y_test_annual = Y_test.resample('Y').sum()
-            Y_pred_annual = Y_pred_test.resample('Y').sum()
-            test_corr, _ = pearsonr(Y_test_annual, Y_pred_annual)
-            acc_metric_test = test_loss + 1 / (1 + np.exp(-test_corr))
             # Prepare solution to save
-            sol_file = pd.concat([sol_file, pd.DataFrame({'Metric': [acc_metric], 'CV': [cv_score], 'RY': [train_corr], 
-                                                          'Test_Metric': [test_loss], 'Test_CV': [acc_metric_test], 'Test_RY': [test_corr],
-                                                          'Sol': [solution]})], ignore_index=True)
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [cv_score], 'Test': [test_loss], 'Sol': [solution]})], ignore_index=True)
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             
-            return acc_metric
+            return cv_score
         
         """
         This will be the function used to generate random vectors for the initialization of the algorithm
@@ -231,7 +223,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
         "stop_cond": "Neval",
         "time_limit": 4000.0,
         "Ngen": 10000,
-        "Neval": 15000, # normally use 15000
+        "Neval": 5000, # normally use 15000
         "fit_target": 1000,
 
         "verbose": True,
@@ -271,10 +263,10 @@ if __name__ == '__main__':
     parser.add_argument('--basin', type=str, help='Basin')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
     parser.add_argument('--anomaly_clustering', type=str, help='If y retrieve dataset of anomaly clustering')
-    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--n_vars', type=int, default=8, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, default='LinReg', help='ML model to train for the computation of the optimization metric')
+    parser.add_argument('--model_kind', type=str, default='pi-mlp', help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
