@@ -3,6 +3,7 @@ from PyCROSL.AbsObjectiveFunc import *
 from PyCROSL.SubstrateReal import *
 from PyCROSL.SubstrateInt import *
 
+import lightgbm as lgb
 from lightgbm import LGBMRegressor
 from sklearn import preprocessing
 from sklearn.metrics import mean_squared_error, r2_score
@@ -37,6 +38,22 @@ class PI_model(Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return {"loss": loss}
+
+# Custom loss function for the physical informed lgbm model 
+def lgbm_pi_obj(y_true, y_pred, gpi):
+    # Define first and second derivate of the loss function to train the model
+    grad = 2 * (y_pred - y_true) + 2 * (y_pred - gpi)
+    hess = 2 * np.ones_like(y_true)
+    return grad, hess
+
+# Custom evaluation function for the physical informed lgbm model
+def lgbm_pi_eval(y_true, y_pred, gpi):
+    # Compute the mse between the true and predicted values
+    mse_pred = mean_squared_error(y_true, y_pred)
+    # Compute the mse between the true values and the gpis
+    mse_gpi = mean_squared_error(y_true, gpi)
+    eval_metric = mse_pred + mse_gpi
+    return 'pi-mse_eval', eval_metric, False
 
 def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
@@ -150,37 +167,75 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             fold = 1
             cv_scores = []
             test_losses = []
-            Y_pred_train = pd.Series(index=Y_train.index)
+            # Y_pred_train = pd.Series(index=Y_train.index)
             Y_pred_test = pd.Series(index=Y_test.index)
             for train_index, val_index in kf.split(X_train):
                 X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
                 Y_train_fold, Y_val_fold = Y_train.iloc[train_index], Y_train.iloc[val_index]
                 gpi_pi_train_fold, gpi_pi_val_fold = gpi_pi_train.iloc[train_index], gpi_pi_train.iloc[val_index]
-                # Define the model and compile it
-                inputs = Input(shape=(len(X_train.columns),))
-                x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
-                output = layers.Dense(1)(x)
-                model = PI_model(inputs, output)
-                model.compile(optimizer=optimizers.Adam(learning_rate=0.001))
-                # Prepare the training data and the validation datasets
-                train_data = tf.data.Dataset.from_tensor_slices((X_train_fold.values, (Y_train_fold.values, gpi_pi_train_fold.values))).batch(32)
-                val_data = tf.data.Dataset.from_tensor_slices((X_val_fold.values, (Y_val_fold.values, gpi_pi_val_fold.values))).batch(32)
-                # Train model
-                callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-                history = model.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
-                # Evaluate model
-                cv_scores.append(history.history['loss'][-1])
-                test_losses.append(model.evaluate(X_test.values, (Y_test.values, gpi_pi_test.values), verbose=0))
-                Y_pred_train.loc[X_train_fold.index] = model.predict(X_train_fold).reshape(-1)
-                Y_pred_test.loc[X_test.index] = model.predict(X_test).reshape(-1)
+                ## PI-MLP ##
+                # # Define the model and compile it
+                # inputs = Input(shape=(len(X_train.columns),))
+                # x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
+                # output = layers.Dense(1)(x)
+                # model = PI_model(inputs, output)
+                # model.compile(optimizer=optimizers.Adam(learning_rate=0.001))
+                # # Prepare the training data and the validation datasets
+                # train_data = tf.data.Dataset.from_tensor_slices((X_train_fold.values, (Y_train_fold.values, gpi_pi_train_fold.values))).batch(32)
+                # val_data = tf.data.Dataset.from_tensor_slices((X_val_fold.values, (Y_val_fold.values, gpi_pi_val_fold.values))).batch(32)
+                # # Train model
+                # callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+                # history = model.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
+                # # Evaluate model
+                # cv_scores.append(history.history['loss'][-1])
+                # test_losses.append(model.evaluate(X_test.values, (Y_test.values, gpi_pi_test.values), verbose=0))
+                # # Y_pred_train.loc[X_train_fold.index] = model.predict(X_train_fold).reshape(-1)
+                # Y_pred_test.loc[X_test.index] = model.predict(X_test).reshape(-1)
+                ## PI-LGBM ##
+                # Prepare the dataset
+                train_data = lgb.Dataset(X_train_fold, label=Y_train_fold)
+                train_data.set_field('gpi', gpi_pi_train_fold)
+                val_data = lgb.Dataset(X_val_fold, label=Y_val_fold, reference=train_data)
+                val_data.set_field('gpi', gpi_pi_val_fold)
                 fold += 1
+                # Train the model
+                def lgbm_custom_obj(y_true, y_pred):
+                    gpi = train_data.get_field('gpi')
+                    return lgbm_pi_obj(y_true, y_pred, gpi)
+                def lgbm_custom_eval(y_true, y_pred):
+                    gpi = val_data.get_field('gpi')
+                    return lgbm_pi_eval(y_true, y_pred, gpi)
+                lgbm_model = LGBMRegressor(
+                    num_leaves=7, 
+                    max_depth=3, 
+                    learning_rate=0.1, 
+                    n_estimators=25, 
+                    objective=lgbm_custom_obj, 
+                    n_jobs=4, 
+                    verbosity=-1, 
+                    early_stopping_rounds=5
+                )
+                lgbm_model.fit(
+                    X_train_fold,
+                    Y_train_fold,
+                    eval_set=[(X_train_fold, Y_train_fold), (X_val_fold, Y_val_fold)],
+                    eval_names=['train', 'val'],
+                    eval_metric=lgbm_custom_eval
+                )
+                # Save metrics 
+                val_loss = lgbm_model.best_score['val']['pi-mse_eval']
+                cv_scores.append(val_loss)
+                # Y_pred_train = lgbm_model.predict(X_train_fold)
+                Y_pred_test = lgbm_model.predict(X_test)
+                test_loss = lgbm_pi_eval(Y_test, Y_pred_test, gpi_pi_test)[1]
+                test_losses.append(test_loss)
             
             # Compute accuracy metric combining correlation and cross-validated MSE
             cv_score = np.array(cv_scores).mean()
             # Evaluate model on the test set
-            test_loss = np.array(test_losses).mean()
+            test_loss_mean = np.array(test_losses).mean()
             # Prepare solution to save
-            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [cv_score], 'Test': [test_loss], 'Sol': [solution]})], ignore_index=True)
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [cv_score], 'Test': [test_loss_mean], 'Sol': [solution]})], ignore_index=True)
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             
@@ -266,7 +321,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_vars', type=int, default=8, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, default='pi-mlp', help='ML model to train for the computation of the optimization metric')
+    parser.add_argument('--model_kind', type=str, default='pi-lgbm', help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')

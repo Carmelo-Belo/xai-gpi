@@ -8,6 +8,13 @@ results/comparative_analysis/NWP/
 results/comparative_analysis/NI/
 results/comparative_analysis/SP/
 results/comparative_analysis/SI/
+results/GLB/
+results/NA/
+results/NEP/
+results/NWP/
+results/NI/
+results/SP/
+results/SI/
 *.DS_Store
 
 # Byte-compiled / optimized / DLL files
