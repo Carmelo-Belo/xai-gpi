@@ -193,17 +193,14 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
                 # Y_pred_test.loc[X_test.index] = model.predict(X_test).reshape(-1)
                 ## PI-LGBM ##
                 # Prepare the dataset
-                train_data = lgb.Dataset(X_train_fold, label=Y_train_fold)
-                train_data.set_field('gpi', gpi_pi_train_fold)
-                val_data = lgb.Dataset(X_val_fold, label=Y_val_fold, reference=train_data)
-                val_data.set_field('gpi', gpi_pi_val_fold)
-                fold += 1
                 # Train the model
                 def lgbm_custom_obj(y_true, y_pred):
-                    gpi = train_data.get_field('gpi')
+                    indeces = np.where(Y_train_fold.values == y_true)[0]
+                    gpi = gpi_pi_train_fold.iloc[indeces]
                     return lgbm_pi_obj(y_true, y_pred, gpi)
                 def lgbm_custom_eval(y_true, y_pred):
-                    gpi = val_data.get_field('gpi')
+                    indeces = np.where(Y_val_fold.values == y_true)[0]
+                    gpi = gpi_pi_val_fold.iloc[indeces]
                     return lgbm_pi_eval(y_true, y_pred, gpi)
                 lgbm_model = LGBMRegressor(
                     num_leaves=7, 
@@ -218,17 +215,18 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
                 lgbm_model.fit(
                     X_train_fold,
                     Y_train_fold,
-                    eval_set=[(X_train_fold, Y_train_fold), (X_val_fold, Y_val_fold)],
-                    eval_names=['train', 'val'],
+                    eval_set=[(X_val_fold, Y_val_fold)],
+                    eval_names=['val'],
                     eval_metric=lgbm_custom_eval
                 )
                 # Save metrics 
-                val_loss = lgbm_model.best_score['val']['pi-mse_eval']
+                val_loss = lgbm_model._best_score['val']['pi-mse_eval']
                 cv_scores.append(val_loss)
                 # Y_pred_train = lgbm_model.predict(X_train_fold)
                 Y_pred_test = lgbm_model.predict(X_test)
                 test_loss = lgbm_pi_eval(Y_test, Y_pred_test, gpi_pi_test)[1]
                 test_losses.append(test_loss)
+                fold += 1
             
             # Compute accuracy metric combining correlation and cross-validated MSE
             cv_score = np.array(cv_scores).mean()
