@@ -202,10 +202,14 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     obs_indices = dataset_opt.index.year.isin(years)
     obs_dataset = dataset_opt[obs_indices]
     Y_test = obs_dataset[Y_column]
-    Y_pred_MLP = pd.DataFrame()
-    Y_pred_MLP_noFS = pd.DataFrame()
-    Y_pred_LGBM = pd.DataFrame()
-    Y_pred_LGBM_noFS = pd.DataFrame()
+    Y_pred_mlp = pd.DataFrame()
+    Y_pred_pi_mlp = pd.DataFrame()
+    Y_pred_mlp_noFS = pd.DataFrame()
+    Y_pred_pi_mlp_noFS = pd.DataFrame()
+    Y_pred_lgbm = pd.DataFrame()
+    Y_pred_pi_lgbm = pd.DataFrame()
+    Y_pred_lgbm_noFS = pd.DataFrame()
+    Y_pred_pi_lgbm_noFS = pd.DataFrame()
 
     for n_fold, (train_index, test_index) in enumerate(kfold.split(years)):
 
@@ -250,49 +254,131 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         # Split the training set in training and validation sets for all models and both datasets
         X_t, X_v, Y_t, Y_v, X_t_noFS, X_v_noFS, gpi_pi_t, gpi_pi_v = train_test_split(X_train, Y_train, X_train_noFS, gpi_pi_train, test_size=0.2, random_state=42)
 
-        ## MLPregressor Physically Informed ##
-        # Build, compile and train the multi layer perceptron model for the optimized dataset
+        ## Define common training parameters and callbacks for the mlp ##
+        n_neurons = 64
+        epo = 100 # Number of epochs
+        lr = 0.001 # Learning rate
+        l2_reg = 0.001
+        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
+        ## MLPregressor with Selected Features ##
+        # Build and compile the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
         inputs = Input(shape=(n_predictors,))
-        x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
+        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
+        output = layers.Dense(1)(x)
+        mlpreg = Model(inputs, output)
+        mlpreg.compile(optimizer=Adam(learning_rate=lr), loss='mse')
+        # Train the model
+        history = mlpreg.fit(X_t, Y_t, validation_data=(X_v, Y_v), epochs=epo, verbose=0, callbacks=[callback])
+        # Predictions on the test set
+        Y_pred_fold = mlpreg.predict(X_test)
+        Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_mlp = pd.concat([Y_pred_mlp, Y_pred_fold])
+        # Evaluate the model
+        loss = mlpreg.evaluate(X_test, Y_test_fold, verbose=0)
+
+        ## MLPregressor with all Features ##
+        # Build and compile the multi layer perceptron model for the entire dataset
+        n_predictors_noFS = len(X_train_noFS.columns)
+        inputs = Input(shape=(n_predictors_noFS,))
+        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
+        output = layers.Dense(1)(x)
+        mlpreg_noFS = Model(inputs, output)
+        mlpreg_noFS.compile(optimizer=Adam(learning_rate=lr), loss='mse')
+        # Train the model
+        history_noFS = mlpreg_noFS.fit(X_t_noFS, Y_t, validation_data=(X_v_noFS, Y_v), epochs=epo, verbose=0, callbacks=[callback])
+        # Predictions on the test set
+        Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
+        Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_mlp_noFS = pd.concat([Y_pred_mlp_noFS, Y_pred_fold_noFS])
+        # Evaluate the model
+        loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, Y_test_fold, verbose=0)
+
+        ## Plot the training and validation loss for the 2 models ##
+        loss_figure_dir = os.path.join(results_figure_dir, 'models_losses')
+        os.makedirs(loss_figure_dir, exist_ok=True)
+        fig = ut.plot_train_val_loss(history.history['loss'], history.history['val_loss'], history_noFS.history['loss'], history_noFS.history['val_loss'], loss, loss_noFS)
+        fig.savefig(os.path.join(loss_figure_dir, f'mlp_loss_{n_fold}.pdf'), format='pdf', dpi=300)
+
+        ## MLPregressor Physically Informed with Selected Features ##
+        # Build and compile the multi layer perceptron model for the optimized dataset
+        n_predictors = len(X_train.columns)
+        inputs = Input(shape=(n_predictors,))
+        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
         output = layers.Dense(1)(x)
         mlpreg = PI_model(inputs, output)
-        mlpreg.compile(optimizer=Adam(learning_rate=0.001))
+        mlpreg.compile(optimizer=Adam(learning_rate=lr))
         # Prepare training and validation datasets
         train_data = tf.data.Dataset.from_tensor_slices((X_t.values, (Y_t.values, gpi_pi_t.values))).batch(32)
         val_data = tf.data.Dataset.from_tensor_slices((X_v.values, (Y_v.values, gpi_pi_v.values))).batch(32)
         # Train model
-        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
-        history = mlpreg.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
+        history = mlpreg.fit(train_data, validation_data=val_data, epochs=epo, verbose=0, callbacks=[callback])
+        # Predictions on the test set
         Y_pred_fold = mlpreg.predict(X_test)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
-        Y_pred_MLP = pd.concat([Y_pred_MLP, Y_pred_fold])
+        Y_pred_pi_mlp = pd.concat([Y_pred_pi_mlp, Y_pred_fold])
         # Evaluate the model for the optimized dataset
         loss = mlpreg.evaluate(X_test.values, (Y_test_fold.values, gpi_pi_test.values), verbose=0)
+
+        ## MLPregressor Physically Informed with all Features ##
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
         inputs = Input(shape=(n_predictors_noFS,))
-        x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
+        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
         output = layers.Dense(1)(x)
         mlpreg_noFS = PI_model(inputs, output)
-        mlpreg_noFS.compile(optimizer=Adam(learning_rate=0.001))
+        mlpreg_noFS.compile(optimizer=Adam(learning_rate=lr))
         # Prepare training and validation datasets
         train_data = tf.data.Dataset.from_tensor_slices((X_t_noFS.values, (Y_t.values, gpi_pi_t.values))).batch(32)
         val_data = tf.data.Dataset.from_tensor_slices((X_v_noFS.values, (Y_v.values, gpi_pi_v.values))).batch(32)
         # Train model 
-        history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
+        history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=epo, verbose=0, callbacks=[callback])
+        # Predictions on the test set
         Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['tcg'])
-        Y_pred_MLP_noFS = pd.concat([Y_pred_MLP_noFS, Y_pred_fold_noFS])
+        Y_pred_pi_mlp_noFS = pd.concat([Y_pred_pi_mlp_noFS, Y_pred_fold_noFS])
         # Evaluate the model for the entire dataset
         loss_noFS = mlpreg_noFS.evaluate(X_test_noFS.values, (Y_test_fold.values, gpi_pi_test.values), verbose=0)
-        # Plot the training and validation loss for the 2 models
-        loss_figure_dir = os.path.join(results_figure_dir, 'models_losses')
-        os.makedirs(loss_figure_dir, exist_ok=True)
-        fig = ut.plot_train_val_loss(history.history['loss'], history.history['val_loss'], history_noFS.history['loss'], history_noFS.history['val_loss'], loss, loss_noFS)
-        fig.savefig(os.path.join(loss_figure_dir, f'MLP_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
 
-        ## LightGBM Physically Informed ##
+        ## Plot the training and validation loss for the 2 models ##
+        fig = ut.plot_train_val_loss(history.history['loss'], history.history['val_loss'], history_noFS.history['loss'], history_noFS.history['val_loss'], loss, loss_noFS)
+        fig.savefig(os.path.join(loss_figure_dir, f'pi-mlp_loss_{n_fold}.pdf'), format='pdf', dpi=300)
+
+        ## Define common training parameters and callbacks for the lgbm ##
+        n_est = 100 # Number of estimators
+        lr = 0.01 # Learning rate
+        max_d = 3 # Maximum depth
+        stop_rounds = 10 # Early stopping rounds
+
+        ## LightGBM with Selected Features ##
+        # Build, compile and train the lightgbm regressor for the optimized dataset
+        lgbm = LGBMRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_d, objective='regression', verbosity=-1, early_stopping_rounds=stop_rounds)
+        lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_names=['train', 'val'], eval_metric='l2')
+        # Predictions on the test set
+        Y_pred_fold_lgbm = lgbm.predict(X_test)
+        Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_lgbm = pd.concat([Y_pred_lgbm, Y_pred_fold_lgbm])
+        # Evaluate the model for the optimized dataset
+        loss_lgbm = mean_squared_error(Y_test_fold, Y_pred_fold_lgbm)
+
+        ## LightGBM with all Features ##
+        # Build, compile and train the lightgbm regressor for the entire dataset
+        lgbm_noFS = LGBMRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_d, objective='regression', verbosity=-1, early_stopping_rounds=stop_rounds)
+        lgbm_noFS.fit(X_t_noFS, Y_t, eval_set=[(X_t_noFS, Y_t), (X_v_noFS, Y_v)], eval_names=['train', 'val'], eval_metric='l2')
+        # Predictions on the test set
+        Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
+        Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_lgbm_noFS = pd.concat([Y_pred_lgbm_noFS, Y_pred_fold_lgbm_noFS])
+        # Evaluate the model for the entire dataset
+        loss_lgbm_noFS = mean_squared_error(Y_test_fold, Y_pred_fold_lgbm_noFS)
+
+        ## Plot the training and validation loss for the 2 models ##
+        fig = ut.plot_train_val_loss(lgbm.evals_result_['train']['l2'], lgbm.evals_result_['val']['l2'],
+                                    lgbm_noFS.evals_result_['train']['l2'], lgbm_noFS.evals_result_['val']['l2'], loss_lgbm, loss_lgbm_noFS)
+        fig.savefig(os.path.join(loss_figure_dir, f'lgbm_loss_{n_fold}.pdf'), format='pdf', dpi=300)
+
+        ## LightGBM Physically Informed with Selected Features ##
         def lgbm_custom_obj(y_true, y_pred):
             indeces = np.where(Y_t.values == y_true)[0]
             gpi = gpi_pi_t.iloc[indeces]
@@ -306,44 +392,37 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
                 gpi = gpi_pi_v.iloc[indeces]
             return lgbm_pi_eval(y_true, y_pred, gpi)
         # Build, compile and train the lightgbm regressor for the optimized dataset
-        lgbm = LGBMRegressor(
-            n_estimators=100, 
-            learning_rate=0.01, 
-            max_depth=3, 
-            objective=lgbm_custom_obj, 
-            verbosity=-1, 
-            early_stopping_rounds=10
-        )
+        lgbm = LGBMRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_d, objective=lgbm_custom_obj, verbosity=-1, early_stopping_rounds=stop_rounds)
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_names=['train', 'val'], eval_metric=lgbm_custom_eval)
+        # Predictions on the test set
         Y_pred_fold_lgbm = lgbm.predict(X_test)
         Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
-        Y_pred_LGBM = pd.concat([Y_pred_LGBM, Y_pred_fold_lgbm])
+        Y_pred_pi_lgbm = pd.concat([Y_pred_pi_lgbm, Y_pred_fold_lgbm])
         # Evaluate the model for the optimized dataset
         loss_lgbm = lgbm_pi_eval(Y_test_fold, Y_pred_fold_lgbm, gpi_pi_test)[1]
+
+        ## LightGBM Physically Informed with all Features ##
         # Build, compile and train the lightgbm regressor for the entire dataset
-        lgbm_noFS = LGBMRegressor(
-            n_estimators=100, 
-            learning_rate=0.01, 
-            max_depth=3, 
-            objective=lgbm_custom_obj, 
-            verbosity=-1, 
-            early_stopping_rounds=10
-            )
+        lgbm_noFS = LGBMRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_d, objective=lgbm_custom_obj, verbosity=-1, early_stopping_rounds=stop_rounds)
         lgbm_noFS.fit(X_t_noFS, Y_t, eval_set=[(X_t_noFS, Y_t), (X_v_noFS, Y_v)], eval_names=['train', 'val'], eval_metric=lgbm_custom_eval)
+        # Predictions on the test set
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
         Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['tcg'])
-        Y_pred_LGBM_noFS = pd.concat([Y_pred_LGBM_noFS, Y_pred_fold_lgbm_noFS])
+        Y_pred_pi_lgbm_noFS = pd.concat([Y_pred_pi_lgbm_noFS, Y_pred_fold_lgbm_noFS])
         # Evaluate the model for the entire dataset
         loss_lgbm_noFS = lgbm_pi_eval(Y_test_fold, Y_pred_fold_lgbm_noFS, gpi_pi_test)[1]
-        # Plot the training and validation loss for the 2 models
+        
+        ## Plot the training and validation loss for the 2 models ##
         fig = ut.plot_train_val_loss(lgbm.evals_result_['train']['pi-mse_eval'], lgbm.evals_result_['val']['pi-mse_eval'], 
                                     lgbm_noFS.evals_result_['train']['pi-mse_eval'], lgbm_noFS.evals_result_['val']['pi-mse_eval'], loss_lgbm, loss_lgbm_noFS)
-        fig.savefig(os.path.join(loss_figure_dir, f'LGBM_Loss_{n_fold}.pdf'), format='pdf', dpi=300)
+        fig.savefig(os.path.join(loss_figure_dir, f'pi-lgbm_loss_{n_fold}.pdf'), format='pdf', dpi=300)
 
     # Create a dataframe where to store the info of the runs and correlations with the target variable
     performance_df_file = os.path.join(fs_dir, 'results', f'sim_performance_{basin}.csv')
-    performance_columns = ['experiment', 'model', 'n_clusters', 'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 
-                           'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS']
+    performance_columns = ['experiment', 'model', 'n_clusters', 'n_features', 
+                           'R_mlp', 'R_mlp_noFS', 'R_pi-mlp', 'R_pi-mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_pi-lgbm', 'R_pi-lgbm_noFS',
+                           'R_S_mlp', 'R_S_mlp_noFS', 'R_S_pi-mlp', 'R_S_pi-mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 'R_S_pi-lgbm', 'R_S_pi-lgbm_noFS',
+                           'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_pi-mlp', 'R_Y_pi-mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_pi-lgbm', 'R_Y_pi-lgbm_noFS']
     if os.path.exists(performance_df_file):
         performance_df = pd.read_csv(performance_df_file, index_col=0)
     else:
@@ -351,17 +430,28 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         performance_df.set_index('experiment', inplace=True)
 
     # Compare observations to predictions
-    r_mlp, _ = pearsonr(Y_test, Y_pred_MLP['tcg'])
-    r_lgbm, _ = pearsonr(Y_test, Y_pred_LGBM['tcg'])
-    r_mlp_noFS, _ = pearsonr(Y_test, Y_pred_MLP_noFS['tcg'])
-    r_lgbm_noFS, _ = pearsonr(Y_test, Y_pred_LGBM_noFS['tcg'])
+    r_mlp, _ = pearsonr(Y_test, Y_pred_mlp['tcg'])
+    r_mlp_noFS, _ = pearsonr(Y_test, Y_pred_mlp_noFS['tcg'])
+    r_pi_mlp, _ = pearsonr(Y_test, Y_pred_pi_mlp['tcg'])
+    r_pi_mlp_noFS, _ = pearsonr(Y_test, Y_pred_pi_mlp_noFS['tcg'])
+    r_lgbm, _ = pearsonr(Y_test, Y_pred_lgbm['tcg'])
+    r_lgbm_noFS, _ = pearsonr(Y_test, Y_pred_lgbm_noFS['tcg'])
+    r_pi_lgbm, _ = pearsonr(Y_test, Y_pred_pi_lgbm['tcg'])
+    r_pi_lgbm_noFS, _ = pearsonr(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
     xticks = pd.Series(Y_test.index).dt.strftime('%m-%Y').to_numpy()
-    plt.figure(figsize=(30, 12))
+    plt.figure(figsize=(60, 18))
+    # observations
     plt.plot(xticks, Y_test, label='Observed (IBTrACS)', color='#1f77b4')
-    plt.plot(xticks, Y_pred_MLP['tcg'], label=f'FS-MLP - R:{r_mlp:.3f}', color='#ff7f0e')
-    plt.plot(xticks, Y_pred_MLP_noFS['tcg'], label=f'NoFS-MLP - R:{r_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--')
-    plt.plot(xticks, Y_pred_LGBM['tcg'], label=f'FS-LGBM - R:{r_lgbm:.3f}', color='#2ca02c')
-    plt.plot(xticks, Y_pred_LGBM_noFS['tcg'], label=f'NoFS-LGBM - R:{r_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--')
+    # mlp predictions
+    plt.plot(xticks, Y_pred_mlp['tcg'], label=f'FS mlp - R:{r_mlp:.3f}', color='#ff7f0e')
+    plt.plot(xticks, Y_pred_mlp_noFS['tcg'], label=f'NoFS mlp - R:{r_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--')
+    plt.plot(xticks, Y_pred_pi_mlp['tcg'], label=f'FS pi-mlp - R:{r_pi_mlp:.3f}', color='#e20000')
+    plt.plot(xticks, Y_pred_pi_mlp_noFS['tcg'], label=f'NoFS pi-mlp - R:{r_pi_mlp_noFS:.3f}', color='#e20000', linestyle='--')
+    # lgbm predictions
+    plt.plot(xticks, Y_pred_lgbm['tcg'], label=f'FS lgbm - R:{r_lgbm:.3f}', color='#2ca02c')
+    plt.plot(xticks, Y_pred_lgbm_noFS['tcg'], label=f'NoFS lgbm - R:{r_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--')
+    plt.plot(xticks, Y_pred_pi_lgbm['tcg'], label=f'FS pi-lgbm - R:{r_pi_lgbm:.3f}', color='#1e2e26')
+    plt.plot(xticks, Y_pred_pi_lgbm_noFS['tcg'], label=f'NoFS pi-lgbm - R:{r_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--')
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xticks(ticks=np.arange(len(xticks))[::4], labels=xticks[::4], rotation=45)
     plt.xlabel('Months')
@@ -372,20 +462,35 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
     # Compare seasonal accumulated number of TCs
     Y_test_seasonal = Y_test.groupby(Y_test.index.month).mean()
-    Y_pred_MLP_seasonal = Y_pred_MLP.groupby(Y_pred_MLP.index.month).mean()
-    Y_pred_LGBM_seasonal = Y_pred_LGBM.groupby(Y_pred_LGBM.index.month).mean()
-    Y_pred_MLP_noFS_seasonal = Y_pred_MLP_noFS.groupby(Y_pred_MLP_noFS.index.month).mean()
-    Y_pred_LGBM_noFS_seasonal = Y_pred_LGBM_noFS.groupby(Y_pred_LGBM_noFS.index.month).mean()
-    rS_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_seasonal['tcg'])
-    rS_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_seasonal['tcg'])
-    rS_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_MLP_noFS_seasonal['tcg'])
-    rS_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_LGBM_noFS_seasonal['tcg'])
+    Y_pred_mlp_seasonal = Y_pred_mlp.groupby(Y_pred_mlp.index.month).mean()
+    Y_pred_mlp_noFS_seasonal = Y_pred_mlp_noFS.groupby(Y_pred_mlp_noFS.index.month).mean()
+    Y_pred_pi_mlp_seasonal = Y_pred_pi_mlp.groupby(Y_pred_pi_mlp.index.month).mean()
+    Y_pred_pi_mlp_noFS_seasonal = Y_pred_pi_mlp_noFS.groupby(Y_pred_pi_mlp_noFS.index.month).mean()
+    Y_pred_lgbm_seasonal = Y_pred_lgbm.groupby(Y_pred_lgbm.index.month).mean()
+    Y_pred_lgbm_noFS_seasonal = Y_pred_lgbm_noFS.groupby(Y_pred_lgbm_noFS.index.month).mean()
+    Y_pred_pi_lgbm_seasonal = Y_pred_pi_lgbm.groupby(Y_pred_pi_lgbm.index.month).mean()
+    Y_pred_pi_lgbm_noFS_seasonal = Y_pred_pi_lgbm_noFS.groupby(Y_pred_pi_lgbm_noFS.index.month).mean()
+    rS_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_mlp_seasonal['tcg'])
+    rS_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_mlp_noFS_seasonal['tcg'])
+    rS_pi_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_pi_mlp_seasonal['tcg'])
+    rS_pi_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_pi_mlp_noFS_seasonal['tcg'])
+    rS_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_lgbm_seasonal['tcg'])
+    rS_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_lgbm_noFS_seasonal['tcg'])
+    rS_pi_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_pi_lgbm_seasonal['tcg'])
+    rS_pi_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_pi_lgbm_noFS_seasonal['tcg'])
     plt.figure(figsize=(10, 6))
+    # observations
     plt.plot(Y_test_seasonal.index, Y_test_seasonal, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
-    plt.plot(Y_pred_MLP_seasonal.index, Y_pred_MLP_seasonal['tcg'], label=f'FS-MLP - R:{rS_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_MLP_noFS_seasonal.index, Y_pred_MLP_noFS_seasonal['tcg'], label=f'NoFS-MLP - R:{rS_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_LGBM_seasonal.index, Y_pred_LGBM_seasonal['tcg'], label=f'FS-LGBM - R:{rS_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_LGBM_noFS_seasonal.index, Y_pred_LGBM_noFS_seasonal['tcg'], label=f'NoFS-LGBM - R:{rS_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    # mlp predictions
+    plt.plot(Y_pred_mlp_seasonal.index, Y_pred_mlp_seasonal['tcg'], label=f'FS mlp - R:{rS_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_seasonal.index, Y_pred_mlp_noFS_seasonal['tcg'], label=f'NoFS mlp - R:{rS_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_mlp_seasonal.index, Y_pred_pi_mlp_seasonal['tcg'], label=f'FS pi-mlp - R:{rS_pi_mlp:.3f}', color='#e20000', linewidth=2)
+    plt.plot(Y_pred_pi_mlp_noFS_seasonal.index, Y_pred_pi_mlp_noFS_seasonal['tcg'], label=f'NoFS pi-mlp - R:{rS_pi_mlp_noFS:.3f}', color='#e20000', linestyle='--', linewidth=2)
+    # lgbm predictions
+    plt.plot(Y_pred_lgbm_seasonal.index, Y_pred_lgbm_seasonal['tcg'], label=f'FS lgbm - R:{rS_lgbm:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_seasonal.index, Y_pred_lgbm_noFS_seasonal['tcg'], label=f'NoFS lgbm - R:{rS_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_seasonal.index, Y_pred_pi_lgbm_seasonal['tcg'], label=f'FS pi-lgbm - R:{rS_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_seasonal.index, Y_pred_pi_lgbm_noFS_seasonal['tcg'], label=f'NoFS pi-lgbm - R:{rS_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Months')
     plt.ylabel('# of TCs per month')
@@ -395,27 +500,43 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
     # Compare annual accumulated number of TCs
     Y_test_annual = Y_test.resample('A').sum()
-    Y_pred_MLP_annual = Y_pred_MLP.resample('A').sum()
-    Y_pred_LGBM_annual = Y_pred_LGBM.resample('A').sum()
-    Y_pred_MLP_noFS_annual = Y_pred_MLP_noFS.resample('A').sum()
-    Y_pred_LGBM_noFS_annual = Y_pred_LGBM_noFS.resample('A').sum()
+    Y_pred_mlp_annual = Y_pred_mlp.resample('A').sum()
+    Y_pred_mlp_noFS_annual = Y_pred_mlp_noFS.resample('A').sum()
+    Y_pred_pi_mlp_annual = Y_pred_pi_mlp.resample('A').sum()
+    Y_pred_pi_mlp_noFS_annual = Y_pred_pi_mlp_noFS.resample('A').sum()
+    Y_pred_lgbm_annual = Y_pred_lgbm.resample('A').sum()
+    Y_pred_lgbm_noFS_annual = Y_pred_lgbm_noFS.resample('A').sum()
+    Y_pred_pi_lgbm_annual = Y_pred_pi_lgbm.resample('A').sum()
+    Y_pred_pi_lgbm_noFS_annual = Y_pred_pi_lgbm_noFS.resample('A').sum()
     gpi_indices = gpis_df.index.year.isin(years)
     engpi_test_annual = gpis_df.loc[gpi_indices, 'engpi'].resample('A').sum()
     ogpi_test_annual = gpis_df.loc[gpi_indices, 'ogpi'].resample('A').sum()
-    rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_MLP_annual['tcg'])
-    rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_LGBM_annual['tcg'])
-    rY_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_MLP_noFS_annual['tcg'])
-    rY_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_LGBM_noFS_annual['tcg'])
+    rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_mlp_annual['tcg'])
+    rY_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
+    rY_pi_mlp, _ = pearsonr(Y_test_annual, Y_pred_pi_mlp_annual['tcg'])
+    rY_pi_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_pi_mlp_noFS_annual['tcg'])
+    rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_lgbm_annual['tcg'])
+    rY_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
+    rY_pi_lgbm, _ = pearsonr(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
+    rY_pi_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
     rY_engpi, _ = pearsonr(Y_test_annual, engpi_test_annual)
     rY_ogpi, _ = pearsonr(Y_test_annual, ogpi_test_annual)
     plt.figure(figsize=(10, 6))
+    # observations
     plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
-    plt.plot(Y_pred_MLP_annual.index.year, Y_pred_MLP_annual['tcg'], label=f'FS-MLP - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_MLP_noFS_annual.index.year, Y_pred_MLP_noFS_annual['tcg'], label=f'NoFS-MLP - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_LGBM_annual.index.year, Y_pred_LGBM_annual['tcg'], label=f'FS-LGBM - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_LGBM_noFS_annual.index.year, Y_pred_LGBM_noFS_annual['tcg'], label=f'NoFS-LGBM - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(engpi_test_annual.index.year, engpi_test_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d62728', linewidth=2)
-    plt.plot(ogpi_test_annual.index.year, ogpi_test_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d62728', linestyle='--', linewidth=2)
+    # mlp predictions
+    plt.plot(Y_pred_mlp_annual.index.year, Y_pred_mlp_annual['tcg'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['tcg'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_mlp_annual.index.year, Y_pred_pi_mlp_annual['tcg'], label=f'FS pi-mlp - R:{rY_pi_mlp:.3f}', color='#e20000', linewidth=2)
+    plt.plot(Y_pred_pi_mlp_noFS_annual.index.year, Y_pred_pi_mlp_noFS_annual['tcg'], label=f'NoFS pi-mlp - R:{rY_pi_mlp_noFS:.3f}', color='#e20000', linestyle='--', linewidth=2)
+    # lgbm predictions
+    plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['tcg'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_annual.index.year, Y_pred_lgbm_noFS_annual['tcg'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['tcg'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['tcg'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
+    # genesis potential indeces
+    plt.plot(engpi_test_annual.index.year, engpi_test_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
+    plt.plot(ogpi_test_annual.index.year, ogpi_test_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('# of TCs per year')
@@ -428,18 +549,31 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         'experiment': results_folder,
         'model': model_kind,
         'n_clusters': n_clusters,
+        'n_features': len(X_train.columns),
         'R_mlp': r_mlp,
         'R_mlp_noFS': r_mlp_noFS,
+        'R_pi-mlp': r_pi_mlp,
+        'R_pi-mlp_noFS': r_pi_mlp_noFS,
         'R_lgbm': r_lgbm,
         'R_lgbm_noFS': r_lgbm_noFS,
+        'R_pi-lgbm': r_pi_lgbm,
+        'R_pi-lgbm_noFS': r_pi_lgbm_noFS,
         'R_S_mlp': rS_mlp,
         'R_S_mlp_noFS': rS_mlp_noFS,
+        'R_S_pi-mlp': rS_pi_mlp,
+        'R_S_pi-mlp_noFS': rS_pi_mlp_noFS,
         'R_S_lgbm': rS_lgbm,
         'R_S_lgbm_noFS': rS_lgbm_noFS,
+        'R_S_pi-lgbm': rS_pi_lgbm,
+        'R_S_pi-lgbm_noFS': rS_pi_lgbm_noFS,
         'R_Y_mlp': rY_mlp,
         'R_Y_mlp_noFS': rY_mlp_noFS,
+        'R_Y_pi-mlp': rY_pi_mlp,
+        'R_Y_pi-mlp_noFS': rY_pi_mlp_noFS,
         'R_Y_lgbm': rY_lgbm,
         'R_Y_lgbm_noFS': rY_lgbm_noFS,
+        'R_Y_pi-lgbm': rY_pi_lgbm,
+        'R_Y_pi-lgbm_noFS': rY_pi_lgbm_noFS
     }
     performance_df.loc[results_folder] = row_data
     performance_df.to_csv(performance_df_file)

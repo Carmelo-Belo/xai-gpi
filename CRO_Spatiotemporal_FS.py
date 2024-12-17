@@ -67,7 +67,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
 
             # We set the limits of the vector (window size, time lags and variable selection)
             # Maximum time sequences I can select is 2, maximum time lag is 1 month, and the last one is regarding the binary selection of a variable
-            self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(1, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
+            self.sup_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(1, predictors_df.shape[1]))
             self.inf_lim = np.append(np.append(np.repeat(1, predictors_df.shape[1]), np.repeat(0, predictors_df.shape[1])), np.repeat(0, predictors_df.shape[1]))
 
             super().__init__(self.size, self.opt, self.sup_lim, self.inf_lim)
@@ -123,30 +123,15 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
             # Apply cross validation
             cv_scores = cross_val_score(clf, X_train, Y_train, cv=5, scoring='neg_mean_squared_error')
             clf.fit(X_train, Y_train)
-            # Compute the yearly correlation on the train set
-            Y_pred_train = clf.predict(X_train)
-            Y_pred_train = pd.Series(Y_pred_train, index=Y_train.index)
-            Y_pred_train_annual = Y_pred_train.resample('Y').sum()
-            Y_train_annual = Y_train.resample('Y').sum()
-            train_corr, _ = pearsonr(Y_train_annual, Y_pred_train_annual)
-            # Compute accuracy metric combining correlation and cross-validated MSE
-            acc_metric = -cv_scores.mean() + 1 / (1 + np.exp(-train_corr)) #  we want to maximize the correlation and minimize the MSE, we set optimization to minimize
             # Evaluate model on the test set
             Y_pred = clf.predict(X_test)
             test_mse = mean_squared_error(Y_test, Y_pred)
-            Y_pred = pd.Series(Y_pred, index=Y_test.index)
-            Y_test_annual = Y_test.resample('Y').sum()
-            Y_pred_annual = Y_pred.resample('Y').sum()
-            test_corr, _ = pearsonr(Y_test_annual, Y_pred_annual)
-            acc_metric_test = test_mse + 1 / (1 + np.exp(-test_corr))
             # Prepare solution to save
-            sol_file = pd.concat([sol_file, pd.DataFrame({'Metric': [acc_metric], 'CV': [-cv_scores.mean()], 'RY': [train_corr], 
-                                                          'Test_Metric': [test_mse], 'Test_CV': [acc_metric_test], 'Test_RY': [test_corr],
-                                                          'Sol': [solution]})], ignore_index=True)
+            sol_file = pd.concat([sol_file, pd.DataFrame({'CV': [-cv_scores.mean()], 'Test': [test_mse], 'Sol': [solution]})], ignore_index=True)
             # Save solution
             sol_file.to_csv(indiv_path, sep=' ', header=sol_file.columns, index=None)
             
-            return acc_metric
+            return -cv_scores.mean()
         
         """
         This will be the function used to generate random vectors for the initialization of the algorithm
@@ -185,7 +170,7 @@ def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, m
         "stop_cond": "Neval",
         "time_limit": 4000.0,
         "Ngen": 10000,
-        "Neval": 15000, # normally use 15000
+        "Neval": 5000, # normally use 15000
         "fit_target": 1000,
 
         "verbose": True,
