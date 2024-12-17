@@ -253,7 +253,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         ## MLPregressor Physically Informed ##
         # Build, compile and train the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
-        inputs = Input(shape=n_predictors)
+        inputs = Input(shape=(n_predictors,))
         x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
         output = layers.Dense(1)(x)
         mlpreg = PI_model(inputs, output)
@@ -262,7 +262,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         train_data = tf.data.Dataset.from_tensor_slices((X_t.values, (Y_t.values, gpi_pi_t.values))).batch(32)
         val_data = tf.data.Dataset.from_tensor_slices((X_v.values, (Y_v.values, gpi_pi_v.values))).batch(32)
         # Train model
-        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
         history = mlpreg.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
         Y_pred_fold = mlpreg.predict(X_test)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
@@ -271,7 +271,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         loss = mlpreg.evaluate(X_test.values, (Y_test_fold.values, gpi_pi_test.values), verbose=0)
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
-        inputs = Input(shape=n_predictors_noFS)
+        inputs = Input(shape=(n_predictors_noFS,))
         x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
         output = layers.Dense(1)(x)
         mlpreg_noFS = PI_model(inputs, output)
