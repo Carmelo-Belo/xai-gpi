@@ -2,7 +2,7 @@
 
 # Cycle through the different basins and temporal horizon
 # basins=("GLB" "NA" "NEP" "NI" "NWP" "SI" "SP")
-basins=("SI")
+basins=("SP")
 n_clusters=(5 6 7 8 9 10 11 12)
 models=("linreg" "lgbm" "pi-lgbm")
 n_vars=8
