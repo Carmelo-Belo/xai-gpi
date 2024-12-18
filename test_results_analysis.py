@@ -101,48 +101,21 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     best_solution = best_solution.to_numpy().flatten()
 
     # Find the Cross-Validation and Test metric for the best solution found
-    if model_kind == 'pi-lgbm':
-        CVbest = sol_file_df['CV'].idxmin() 
-        Testbest = sol_file_df['Test'].idxmin()
-    else:
-        MetricBest = sol_file_df['Metric'].idxmin() 
-        CVbest = sol_file_df['CV'].idxmin() 
-        RYbest = sol_file_df['RY'].idxmax() # higher correlation is better
+    CVbest = sol_file_df['CV'].idxmin() 
+    Testbest = sol_file_df['Test'].idxmin()
 
     # Plot the evolution of the different metrics for each solution found per evaluation
-    # Metric of fitness function
-    if model_kind == 'linreg' or model_kind =='lgbm':
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(sol_file_df.index, sol_file_df['Metric'], label='Train')
-        ax.plot(sol_file_df.index, sol_file_df['Test_Metric'], label='Test')
-        ax.scatter(sol_file_df.index[MetricBest], sol_file_df['Metric'][MetricBest], color='black', label='Best Solution')
-        ax.legend()
-        ax.set_xlabel('Solutions')
-        plt.tight_layout()
-        fig.savefig(os.path.join(results_figure_dir, f'Metric_sol_evolution.pdf'), format='pdf', dpi=300)
     # Cross-Validation metric
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(sol_file_df.index, sol_file_df['CV'], label='Train')
     ax.scatter(sol_file_df.index[CVbest], sol_file_df['CV'][CVbest], color='black', label='CV Best')
-    if model_kind == 'pi-lgbm':
-        ax.plot(sol_file_df.index, sol_file_df['Test'], label='Test')
-        ax.scatter(sol_file_df.index[Testbest], sol_file_df['Test'][Testbest], color='green', label='Test Best')
+    ax.plot(sol_file_df.index, sol_file_df['Test'], label='Test')
+    ax.scatter(sol_file_df.index[Testbest], sol_file_df['Test'][Testbest], color='green', label='Test Best')
     ax.legend()
     ax.set_xlabel('Solutions')
     ax.set_ylabel('Mean Squared Error')
     plt.tight_layout()
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
-    # Annual correlation
-    if model_kind == 'linreg' or model_kind =='lgbm':
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(sol_file_df.index, sol_file_df['RY'], label='Train')
-        ax.plot(sol_file_df.index, sol_file_df['Test_RY'], label='Test')
-        ax.scatter(sol_file_df.index[RYbest], sol_file_df['RY'][RYbest], color='black', label='RY Best')
-        ax.legend()
-        ax.set_xlabel('Solutions')
-        ax.set_ylabel('Correlation')
-        plt.tight_layout()
-        fig.savefig(os.path.join(results_figure_dir, f'RY_sol_evolution.pdf'), format='pdf', dpi=300)
 
     # Compute correlations between the candidate variabels and the target variable
     years = np.arange(start_year, end_year, 1)

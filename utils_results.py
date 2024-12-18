@@ -76,12 +76,14 @@ def plot_board(board, column_names, feat_sel, correlations_lag0, correlations_la
             text_color = get_text_color(background_color)
             # Add text with dynamic color
             ax.text(-0.1, pos - 1.25, f'{correlations_lag0[i]:.2f}', fontsize=10, color=text_color)
-            # Get the background color for the specific cell
-            cell_value = board[i, 1]
-            background_color = cmap(norm(cell_value))
-            text_color = get_text_color(background_color)
-            # Add text with dynamic color
-            ax.text(0.9, pos - 1.25, f'{correlations_lag1[i]:.2f}', fontsize=10, color=text_color)
+            # If lag_1 present, add text for the correlation at lag 1
+            if board.shape[1] > 1:
+                # Get the background color for the specific cell
+                cell_value = board[i, 1]
+                background_color = cmap(norm(cell_value))
+                text_color = get_text_color(background_color)
+                # Add text with dynamic color
+                ax.text(0.9, pos - 1.25, f'{correlations_lag1[i]:.2f}', fontsize=10, color=text_color)
         if feat_sel[i] == 0:
             rect = plt.Rectangle((-0.5, pos - 1.5), 1, 1, color='red')
             ax.add_patch(rect)
