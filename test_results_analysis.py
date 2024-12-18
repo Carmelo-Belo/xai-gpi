@@ -25,6 +25,7 @@ def loss_gpi_informed(y_true, y_pred, gpi):
     return mse_pred + mse_gpi
 
 class PI_model(Model):
+    @tf.function(reduce_retracing=True)
     def train_step(self, data):
         X, (y_true, gpi) = data
         with tf.GradientTape() as tape:
@@ -33,6 +34,17 @@ class PI_model(Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return {"loss": loss}
+
+def create_mlp_model(n_predictors, n_neurons, l2_reg, lr, physical_informed=False):
+    inputs = Input(shape=(n_predictors,))
+    x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
+    output = layers.Dense(1)(x)
+    if physical_informed:
+        model = PI_model(inputs, output)
+    else:
+        model = Model(inputs, output)
+    model.compile(optimizer=Adam(learning_rate=lr), loss='mse')
+    return model
 
 # Custom loss function for the physical informed lgbm model 
 def lgbm_pi_obj(y_true, y_pred, gpi):
@@ -232,40 +244,37 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         epo = 100 # Number of epochs
         lr = 0.001 # Learning rate
         l2_reg = 0.001
+        batch_size = 32
         callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
         ## MLPregressor with Selected Features ##
         # Build and compile the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
-        inputs = Input(shape=(n_predictors,))
-        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
-        output = layers.Dense(1)(x)
-        mlpreg = Model(inputs, output)
-        mlpreg.compile(optimizer=Adam(learning_rate=lr), loss='mse')
+        mlpreg = create_mlp_model(n_predictors, n_neurons, l2_reg, lr)
+        # Prepare training and validation datasets
+        train_data = tf.data.Dataset.from_tensor_slices((X_t.values, Y_t.values)).batch(batch_size)
+        val_data = tf.data.Dataset.from_tensor_slices((X_v.values, Y_v.values)).batch(batch_size)
         # Train the model
-        history = mlpreg.fit(X_t, Y_t, validation_data=(X_v, Y_v), epochs=epo, verbose=0, callbacks=[callback])
-        # Predictions on the test set
-        Y_pred_fold = mlpreg.predict(X_test)
+        history = mlpreg.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
+        # Evaluate the model
+        Y_pred_fold = mlpreg.predict(X_test, verbose=0)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_mlp = pd.concat([Y_pred_mlp, Y_pred_fold])
-        # Evaluate the model
         loss = mlpreg.evaluate(X_test, Y_test_fold, verbose=0)
 
         ## MLPregressor with all Features ##
         # Build and compile the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
-        inputs = Input(shape=(n_predictors_noFS,))
-        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
-        output = layers.Dense(1)(x)
-        mlpreg_noFS = Model(inputs, output)
-        mlpreg_noFS.compile(optimizer=Adam(learning_rate=lr), loss='mse')
+        mlpreg_noFS = create_mlp_model(n_predictors_noFS, n_neurons, l2_reg, lr)
+        # Prepare training and validation datasets
+        train_data = tf.data.Dataset.from_tensor_slices((X_t_noFS.values, Y_t.values)).batch(batch_size)
+        val_data = tf.data.Dataset.from_tensor_slices((X_v_noFS.values, Y_v.values)).batch(batch_size)
         # Train the model
-        history_noFS = mlpreg_noFS.fit(X_t_noFS, Y_t, validation_data=(X_v_noFS, Y_v), epochs=epo, verbose=0, callbacks=[callback])
-        # Predictions on the test set
-        Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
+        history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
+        # Evaluate the model
+        Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS, verbose=0)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_mlp_noFS = pd.concat([Y_pred_mlp_noFS, Y_pred_fold_noFS])
-        # Evaluate the model
         loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, Y_test_fold, verbose=0)
 
         ## Plot the training and validation loss for the 2 models ##
@@ -277,42 +286,32 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         ## MLPregressor Physically Informed with Selected Features ##
         # Build and compile the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
-        inputs = Input(shape=(n_predictors,))
-        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
-        output = layers.Dense(1)(x)
-        mlpreg = PI_model(inputs, output)
-        mlpreg.compile(optimizer=Adam(learning_rate=lr))
+        mlpreg = create_mlp_model(n_predictors, n_neurons, l2_reg, lr, physical_informed=True)
         # Prepare training and validation datasets
-        train_data = tf.data.Dataset.from_tensor_slices((X_t.values, (Y_t.values, gpi_pi_t.values))).batch(32)
-        val_data = tf.data.Dataset.from_tensor_slices((X_v.values, (Y_v.values, gpi_pi_v.values))).batch(32)
+        train_data = tf.data.Dataset.from_tensor_slices((X_t.values, (Y_t.values, gpi_pi_t.values))).batch(batch_size)
+        val_data = tf.data.Dataset.from_tensor_slices((X_v.values, (Y_v.values, gpi_pi_v.values))).batch(batch_size)
         # Train model
-        history = mlpreg.fit(train_data, validation_data=val_data, epochs=epo, verbose=0, callbacks=[callback])
-        # Predictions on the test set
-        Y_pred_fold = mlpreg.predict(X_test)
+        history = mlpreg.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
+        # Evaluate the model
+        Y_pred_fold = mlpreg.predict(X_test, verbose=0)
         Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_pi_mlp = pd.concat([Y_pred_pi_mlp, Y_pred_fold])
-        # Evaluate the model for the optimized dataset
-        loss = mlpreg.evaluate(X_test.values, (Y_test_fold.values, gpi_pi_test.values), verbose=0)
+        loss = mlpreg.evaluate(X_test, (Y_test_fold, gpi_pi_test), verbose=0)
 
         ## MLPregressor Physically Informed with all Features ##
         # Build, compile and train the multi layer perceptron model for the entire dataset
         n_predictors_noFS = len(X_train_noFS.columns)
-        inputs = Input(shape=(n_predictors_noFS,))
-        x = layers.Dense(n_neurons, activation='relu', kernel_regularizer=regularizers.l2(l2_reg))(inputs)
-        output = layers.Dense(1)(x)
-        mlpreg_noFS = PI_model(inputs, output)
-        mlpreg_noFS.compile(optimizer=Adam(learning_rate=lr))
+        mlpreg_noFS = create_mlp_model(n_predictors_noFS, n_neurons, l2_reg, lr, physical_informed=True)
         # Prepare training and validation datasets
-        train_data = tf.data.Dataset.from_tensor_slices((X_t_noFS.values, (Y_t.values, gpi_pi_t.values))).batch(32)
-        val_data = tf.data.Dataset.from_tensor_slices((X_v_noFS.values, (Y_v.values, gpi_pi_v.values))).batch(32)
+        train_data = tf.data.Dataset.from_tensor_slices((X_t_noFS.values, (Y_t.values, gpi_pi_t.values))).batch(batch_size)
+        val_data = tf.data.Dataset.from_tensor_slices((X_v_noFS.values, (Y_v.values, gpi_pi_v.values))).batch(batch_size)
         # Train model 
-        history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=epo, verbose=0, callbacks=[callback])
-        # Predictions on the test set
-        Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS)
+        history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
+        # Evaluate the model
+        Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS, verbose=0)
         Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['tcg'])
         Y_pred_pi_mlp_noFS = pd.concat([Y_pred_pi_mlp_noFS, Y_pred_fold_noFS])
-        # Evaluate the model for the entire dataset
-        loss_noFS = mlpreg_noFS.evaluate(X_test_noFS.values, (Y_test_fold.values, gpi_pi_test.values), verbose=0)
+        loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, (Y_test_fold, gpi_pi_test), verbose=0)
 
         ## Plot the training and validation loss for the 2 models ##
         fig = ut.plot_train_val_loss(history.history['loss'], history.history['val_loss'], history_noFS.history['loss'], history_noFS.history['val_loss'], loss, loss_noFS)
