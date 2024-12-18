@@ -17,6 +17,7 @@ results/SP/
 results/SI/
 data/*clusters/
 data/*clusters_anomaly/
+*.out
 *.DS_Store
 
 # Byte-compiled / optimized / DLL files
