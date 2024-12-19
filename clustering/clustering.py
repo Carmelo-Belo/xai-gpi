@@ -7,7 +7,7 @@ os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
 os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
 from utils_clustering import perform_clustering
 
-def main(basin, n_clusters, anomaly_clustering, res, train_yearI, train_yearF, norm):
+def main(basin, n_clusters, anomaly_clustering, res, train_yearI, train_yearF, remove_seasonality):
 
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -18,9 +18,15 @@ def main(basin, n_clusters, anomaly_clustering, res, train_yearI, train_yearF, n
     if anomaly_clustering == 'y':
         by_anomaly = True
         path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters_anomaly')
+        deseasonalize = False
     else:
-        by_anomaly = False  
-        path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters')
+        by_anomaly = False
+        if remove_seasonality == 'y':
+            path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters_deseason')
+            deseasonalize = True
+        else:  
+            path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters')
+            deseasonalize = False
     os.makedirs(path_output, exist_ok=True)
     # Load dataframe containing information of variables to be clustered
     df_cluster_vars = pd.read_csv(os.path.join(clustering_dir, 'vars_dict.csv'))
@@ -42,7 +48,8 @@ def main(basin, n_clusters, anomaly_clustering, res, train_yearI, train_yearF, n
         # Clusters
         print(f'Clustering {var}, {level}')
         months = None
-        centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe = perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output, by_anomaly)
+        centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe = perform_clustering(var, level, months, basin, n_clusters, False, train_yearI, train_yearF, 
+                                                                                                     resolution, path_predictor, path_output, by_anomaly, deseasonalize)
 
         # Update the var name for saving
         if (level != 'sfc') and (len(level) < 5):
@@ -63,7 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--res', type=float, default=2.5, help='Resolution')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
-    parser.add_argument('--norm', type=bool, default=False, help='Normalize data')
+    parser.add_argument('--remove_seasonality', type=str, default='n', help='If y remove seasonality from the data')
 
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.anomaly_clustering, args.res, args.train_yearI, args.train_yearF, args.norm)
+    main(args.basin, args.n_clusters, args.anomaly_clustering, args.res, args.train_yearI, args.train_yearF, args.remove_seasonality)

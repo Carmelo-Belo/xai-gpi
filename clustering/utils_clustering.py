@@ -12,6 +12,7 @@ import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
 import os
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 class cluster_model:
 
@@ -182,7 +183,45 @@ def calculate_weighted_average(data, weights, batch_size):
         
     return result / (num_rows/batch_size)
 
-def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output, by_anomaly):
+def seasasonal_decomposition_3Darray(data, model='additive', period=12):
+    """
+    Decompose a 3D xarray.DataArray into its seasonal, trend, and residual components. The decompiosition is performed along the time dimension.
+
+    Inputs:
+        data: xarray.DataArray
+            The data to decompose
+        model: str
+            The type of decomposition to perform. Options are 'additive' or 'multiplicative'
+        period: int
+            The period of the seasonal component
+
+    Outputs:
+        seasonal: xarray.DataArray
+            The seasonal component of the decomposition
+        trend: xarray.DataArray
+            The trend component of the decomposition
+        residual: xarray.DataArray
+            The residual component of the decomposition
+    """
+    seasonal = data.copy()
+    trend = data.copy()
+    residual = data.copy()
+    for lat in data.latitude.values:
+        for lon in data.longitude.values:
+            grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].values
+            # Check if the time series is all Nan
+            if np.all(np.isnan(grid_point_time_series)):
+                seasonal.loc[dict(latitude=lat, longitude=lon)] = np.nan
+                trend.loc[dict(latitude=lat, longitude=lon)] = np.nan
+                residual.loc[dict(latitude=lat, longitude=lon)] = np.nan
+            else:
+                decomposition = seasonal_decompose(grid_point_time_series, model=model, period=period)
+                seasonal.loc[dict(latitude=lat, longitude=lon)] = decomposition.seasonal
+                trend.loc[dict(latitude=lat, longitude=lon)] = decomposition.trend
+                residual.loc[dict(latitude=lat, longitude=lon)] = decomposition.resid
+    return seasonal, trend, residual
+
+def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output, by_anomaly, deseasonalize):
     """
     Perform clustering of the specified atmospheric variable.
 
@@ -211,6 +250,8 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
             The path to the output directory where to save the clustering results
         by_anomaly: bool
             If True, cluster according to the anomalies of the variable
+        deseasonalize: bool
+            if True, remove the seasonal cycle from the data and cluster the deseasonalized data
     Outputs:
         centroids: list
             The indices of the nodes closest to the cluster centers
@@ -221,6 +262,9 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         labels_dataframe: pd.DataFrame
             The dataframe containing the cluster labels of each node
     """
+    # Do not perform clustering if by_anomaly is True and deseasonalize is True
+    if by_anomaly == True and deseasonalize == True:
+        raise ValueError('Clustering by anomaly considerd the original data, not the deseasonalized data')
 
     ## Load the variable data to cluster ## 
     # Define geographical coordinates according to the basin considered
@@ -273,6 +317,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     if basin != 'GLB':
         total_data = crop_field(total_data, min_lon, max_lon, min_lat, max_lat)
         anomaly = crop_field(anomaly, min_lon, max_lon, min_lat, max_lat)
+    # deseasonalize the data if the deseasonalize flag is True
+    if deseasonalize == True:
+        seasonal, trend, residual = seasasonal_decomposition_3Darray(total_data)
+        total_data = total_data - seasonal
     ## IF WE WANT TO WORK ONLY ON CYCLONE SEASON WHEN BASIN WISE WE NEED TO ADJUST IT HERE ##
 
     ## Perform the cluster only on the train years ##
@@ -324,6 +372,8 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     longitudes = train_data.longitude.values
     if by_anomaly == True:
         clusters_fig = cluster_model.plot_clusters(basin, cluster, anomaly_res_masked, latitudes, longitudes, mask, var_name + ' anomaly')
+    elif deseasonalize == True:
+        clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name + ' deseasonalized')
     else:
         clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name)
 
