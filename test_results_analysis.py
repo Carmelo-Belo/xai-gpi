@@ -175,7 +175,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
     # Compone the dataset to train the model using all predictors possible
     dataset_opt_noFS = target_df.copy()
-    for l in range(2):
+    for l in range(1):
         for var in predictors_df.columns:
             col_df = pd.DataFrame(predictors_df[var].shift(l).values, index=dataset_opt_noFS.index, columns=[f'{var}_lag{l}'])
             dataset_opt_noFS = pd.concat([dataset_opt_noFS, col_df], axis=1)
