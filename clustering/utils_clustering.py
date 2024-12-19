@@ -209,8 +209,8 @@ def seasasonal_decomposition_3Darray(data, model='additive', period=12):
     for lat in data.latitude.values:
         for lon in data.longitude.values:
             grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].values
-            # Check if the time series is all Nan
-            if np.all(np.isnan(grid_point_time_series)):
+            # Check if the time series contains NaN values
+            if np.any(np.isnan(grid_point_time_series)):
                 seasonal.loc[dict(latitude=lat, longitude=lon)] = np.nan
                 trend.loc[dict(latitude=lat, longitude=lon)] = np.nan
                 residual.loc[dict(latitude=lat, longitude=lon)] = np.nan
@@ -286,7 +286,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         raise ValueError('Basin not recognized')
     
     # Data extraction from .nc files
-    for y, year in enumerate(range(1965, 2023)):
+    for y, year in enumerate(range(1970, 2023)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
             total_data = xr.open_dataset(path)[var]
