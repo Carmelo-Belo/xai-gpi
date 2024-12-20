@@ -1,4 +1,5 @@
 import os
+import io
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -6,9 +7,13 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from PIL import Image
+from pdf2image import convert_from_path
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
+import ipywidgets as widgets
 
 # Function to create a board containing the information of the selected features
 def create_board(n_rows, n_cols, final_sequence, sequence_length, feat_sel):
@@ -457,3 +462,31 @@ def vars_selection_heatmaps_no_cluster(experiments_folders, selected_vars_df_lis
 
     fig.set_tight_layout(True)
     return fig
+
+# Functions to display saved pdf or matplotlib figure in the notebook or in dashboard
+def load_pdf_convert_to_image(pdf_path):
+    with open(pdf_path, "rb") as file:
+        image = convert_from_path(pdf_path)[0]
+    return image
+
+def PIL_to_widget(pil_img, wdt, hgt):
+    # Convert PIL Image to bytes
+    img_byte_arr = io.BytesIO()
+    pil_img.save(img_byte_arr, format='PNG')
+    img_byte_arr = img_byte_arr.getvalue()
+    # Create an Image widget from byte data
+    image_widget = widgets.Image(
+        value=img_byte_arr,
+        format='png',
+        width=f"{wdt}px",
+        height=f"{hgt}px",
+        align_self='center'
+    )
+    return image_widget 
+
+def figure_to_PIL(fig):
+    canvas = FigureCanvas(fig)
+    canvas.draw()
+    buf = canvas.buffer_rgba()
+    pil_image = Image.frombuffer('RGBA', canvas.get_width_height(), buf, 'raw', 'RGBA', 0, 1)
+    return pil_image
