@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import os
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 def crop_field(var, lon1, lon2, lat1, lat2):
     """
@@ -39,7 +40,7 @@ def check_consecutive_repeats(df,col):
         print('Consecutive values repeated found at',col)
         print(repeats[repeats].index)
 
-def build_dataset(basin, cluster_variables, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, month_col=True):
+def build_dataset(basin, cluster_variables, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, deseasonalize, month_col=True):
     
     # Define geographical coordinates according to the basin considered
     if basin == 'NWP':
@@ -111,4 +112,12 @@ def build_dataset(basin, cluster_variables, index_variables, cluster_path, index
     target = pd.DataFrame(index=date_range)
     target['tcg'] = tcg_ds.tcg.sum(dim=['latitude', 'longitude']).values.astype(int)
 
-    return dataset, target
+    # If deseasonalize is True, remove the seasonal cycle from the data and return also the seasonal component, otherwise return the dataset and target
+    if deseasonalize:
+        decomposition = seasonal_decompose(target['tcg'], model='additive')
+        deseason_target = target['tcg'] - decomposition.seasonal
+        target = deseason_target.to_frame().rename(columns={0: 'tcg'})
+        seasonal = decomposition.seasonal.to_frame()
+        return dataset, target, seasonal
+    else:
+        return dataset, target
