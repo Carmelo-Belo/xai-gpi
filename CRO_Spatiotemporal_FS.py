@@ -8,7 +8,6 @@ from sklearn import preprocessing
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
-from scipy.stats import pearsonr
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -16,20 +15,24 @@ import numpy as np
 import os
 import argparse
 
-def main(basin, n_clusters, anomaly_clustering, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
+def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1965-2022_2.5x2.5.csv'
+    target_file = 'target_1970-2022_2.5x2.5.csv'
     # Set directories
+    if anomaly_clustering == 'y' and remove_seasonality == 'y':
+        raise ValueError('Cannot build a dataset with both anomaly clustering and deseasonalization, check utils_clustering.py')
     fs_dir = os.path.join(project_dir, 'FS_TCG')
     if anomaly_clustering == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_anomaly')
+    elif remove_seasonality == 'y':
+        data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_deseason')
     else:
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
 
     # Set path and name of the predictor dataset and target dataset
-    experiment_filename = f'1965-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+    experiment_filename = f'1970-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)
@@ -210,12 +213,14 @@ if __name__ == '__main__':
     parser.add_argument('--basin', type=str, help='Basin')
     parser.add_argument('--n_clusters', type=int, help='Number of clusters')
     parser.add_argument('--anomaly_clustering', type=str, help='If y retrieve dataset of anomaly clustering')
+    parser.add_argument('--remove_seasonality', type=str, help='If y retrieve dataset where seasonality has been removed') 
     parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
     parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, default='LinReg', help='ML model to train for the computation of the optimization metric')
+    parser.add_argument('--model_kind', type=str, help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.anomaly_clustering, args.n_vars, args.n_idxs, args.output_folder, args.model_kind, args.train_yearI, args.train_yearF, args.test_yearF)
+    main(args.basin, args.n_clusters, args.anomaly_clustering, args.remove_seasonality, args.n_vars, args.n_idxs, args.output_folder, args.model_kind, args.train_yearI, 
+         args.train_yearF, args.test_yearF)
