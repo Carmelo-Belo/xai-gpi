@@ -33,7 +33,7 @@ def main(res):
         else:
             raise ValueError('basin not recognized')
         # Set the GPIS time series dataframe
-        years = np.arange(1965, 2023) # dataset goes from 1965 to 2022
+        years = np.arange(1970, 2023) # dataset goes from 1970 to 2022
         time_index = pd.date_range(start=f'{years[0]}-01-01', end=f'{years[-1]}-12-01', freq='MS').astype('datetime64[ns]')
         df_gpis = pd.DataFrame(columns=['', 'engpi', 'ogpi'])
         df_gpis[''] = time_index

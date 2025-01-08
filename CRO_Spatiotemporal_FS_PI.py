@@ -196,12 +196,10 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
                 # Prepare the dataset
                 # Train the model
                 def lgbm_custom_obj(y_true, y_pred):
-                    indeces = np.where(Y_train_fold.values == y_true)[0]
-                    gpi = gpi_pi_train_fold.iloc[indeces]
+                    gpi = gpi_pi_train_fold
                     return lgbm_pi_obj(y_true, y_pred, gpi)
                 def lgbm_custom_eval(y_true, y_pred):
-                    indeces = np.where(Y_val_fold.values == y_true)[0]
-                    gpi = gpi_pi_val_fold.iloc[indeces]
+                    gpi = gpi_pi_val_fold
                     return lgbm_pi_eval(y_true, y_pred, gpi)
                 lgbm_model = LGBMRegressor(
                     num_leaves=7, 
@@ -314,14 +312,14 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature selection with CRO')
-    parser.add_argument('--basin', type=str, help='Basin')
-    parser.add_argument('--n_clusters', type=int, help='Number of clusters')
-    parser.add_argument('--anomaly_clustering', type=str, help='If y retrieve dataset of anomaly clustering')
-    parser.add_argument('--remove_seasonality', type=str, help='If y retrieve dataset where seasonality has been removed') 
-    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
-    parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, help='ML model to train for the computation of the optimization metric')
+    parser.add_argument('--basin', default='GLB', type=str, help='Basin')
+    parser.add_argument('--n_clusters', default=5, type=int, help='Number of clusters')
+    parser.add_argument('--anomaly_clustering', default='n', type=str, help='If y retrieve dataset of anomaly clustering')
+    parser.add_argument('--remove_seasonality', default='y', type=str, help='If y retrieve dataset where seasonality has been removed') 
+    parser.add_argument('--n_vars', type=int, default=8, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--output_folder', type=str, default='test', help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--model_kind', type=str, default='pi-lgbm', help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
