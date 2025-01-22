@@ -66,17 +66,20 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1965-2022_2.5x2.5.csv'
+    target_file = 'target_1970-2022_2.5x2.5.csv'
 
     # Retrieve the clusters type of data from the results folder
     nc_string = results_folder.split('_')[2]
     if "A" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
+    if "DS" in nc_string:
+        cluster_data = f'{basin}_{n_clusters}clusters_deseason'
+        target_season = 'target_seasonality_1970-2022_2.5x2.5.csv'
     else:
         cluster_data = f'{basin}_{n_clusters}clusters'
 
     # Set the paths to the files
-    experiment_filename = f'1965-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+    experiment_filename = f'1970-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     sol_filename = f'{model_kind}_' + experiment_filename
     predictor_file = 'predictors_' + experiment_filename
     fs_dir = os.path.join(project_dir, 'FS_TCG')
@@ -96,6 +99,9 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     predictors_df.index = pd.to_datetime(predictors_df.index)
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
+    if "DS" in nc_string:
+        target_season_df = pd.read_csv(os.path.join(data_dir, target_season), index_col=0)
+        target_season_df.index = pd.to_datetime(target_season_df.index)
 
     # Load the gpis time series dataframe and select the target GPIs for physical information to pass to the network
     gpis_df = pd.read_csv(gpis_path, index_col=0)
@@ -352,16 +358,13 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
         ## LightGBM Physically Informed with Selected Features ##
         def lgbm_custom_obj(y_true, y_pred):
-            indeces = np.where(Y_t.values == y_true)[0]
-            gpi = gpi_pi_t.iloc[indeces]
+            gpi = gpi_pi_t
             return lgbm_pi_obj(y_true, y_pred, gpi)
         def lgbm_custom_eval(y_true, y_pred):
             if len(y_true) > 100:
-                indeces = np.where(Y_t.values == y_true)[0]
-                gpi = gpi_pi_t.iloc[indeces]
+                gpi = gpi_pi_t
             else:
-                indeces = np.where(Y_v.values == y_true)[0]
-                gpi = gpi_pi_v.iloc[indeces]
+                gpi = gpi_pi_v
             return lgbm_pi_eval(y_true, y_pred, gpi)
         # Build, compile and train the lightgbm regressor for the optimized dataset
         lgbm = LGBMRegressor(n_estimators=n_est, learning_rate=lr, max_depth=max_d, objective=lgbm_custom_obj, verbosity=-1, early_stopping_rounds=stop_rounds)
@@ -400,6 +403,18 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     else:
         performance_df = pd.DataFrame(columns=performance_columns)
         performance_df.set_index('experiment', inplace=True)
+
+    # If the models were trained with deseasonalized data, add back the seasonality to the predictions and observations
+    if "DS" in nc_string:
+        Y_test = Y_test + target_season_df.loc[Y_test.index, 'seasonal']
+        Y_pred_mlp['tcg'] = Y_pred_mlp['tcg'] + target_season_df.loc[Y_pred_mlp.index, 'seasonal']
+        Y_pred_mlp_noFS['tcg'] = Y_pred_mlp_noFS['tcg'] + target_season_df.loc[Y_pred_mlp_noFS.index, 'seasonal']
+        Y_pred_pi_mlp['tcg'] = Y_pred_pi_mlp['tcg'] + target_season_df.loc[Y_pred_pi_mlp.index, 'seasonal']
+        Y_pred_pi_mlp_noFS['tcg'] = Y_pred_pi_mlp_noFS['tcg'] + target_season_df.loc[Y_pred_pi_mlp_noFS.index, 'seasonal']
+        Y_pred_lgbm['tcg'] = Y_pred_lgbm['tcg'] + target_season_df.loc[Y_pred_lgbm.index, 'seasonal']
+        Y_pred_lgbm_noFS['tcg'] = Y_pred_lgbm_noFS['tcg'] + target_season_df.loc[Y_pred_lgbm_noFS.index, 'seasonal']
+        Y_pred_pi_lgbm['tcg'] = Y_pred_pi_lgbm['tcg'] + target_season_df.loc[Y_pred_pi_lgbm.index, 'seasonal']
+        Y_pred_pi_lgbm_noFS['tcg'] = Y_pred_pi_lgbm_noFS['tcg'] + target_season_df.loc[Y_pred_pi_lgbm_noFS.index, 'seasonal']
 
     # Compare observations to predictions
     r_mlp, _ = pearsonr(Y_test, Y_pred_mlp['tcg'])

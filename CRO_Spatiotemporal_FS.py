@@ -190,7 +190,7 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
         "popul_file": os.path.join(output_dir, 'last_population_' + model_kind + '_' + experiment_filename),
         "history_file": os.path.join(output_dir, 'fit_history_' + model_kind + '_' + experiment_filename),
         "solution_file": os.path.join(output_dir, 'best_solution_' + model_kind + '_' + experiment_filename),
-        "indiv_file": os.path.join(output_dir, 'indiv_hisotry_' + model_kind + '_' + experiment_filename),
+        "indiv_file": os.path.join(output_dir, 'indiv_history_' + model_kind + '_' + experiment_filename),
     }
 
     # Define the operators of the CRO algorithm, they are differ

@@ -78,8 +78,11 @@ def build_dataset(basin, cluster_variables, index_variables, cluster_path, index
         path = os.path.join(cluster_path, filename)
         if v == 0:
             dataset_cluster = pd.read_csv(path, index_col=0, parse_dates=True)
+            dataset_cluster = dataset_cluster[dataset_cluster.index.isin(date_range)]
         else:
-            dataset_cluster = pd.concat([dataset_cluster, pd.read_csv(path, index_col=0, parse_dates=True)], axis=1)
+            temp = pd.read_csv(path, index_col=0, parse_dates=True)
+            temp = temp[temp.index.isin(date_range)]
+            dataset_cluster = pd.concat([dataset_cluster, temp], axis=1)
 
     # Merge the cluster and index dataframes
     dataset = pd.concat([dataset_cluster, df_indeces], axis=1)
