@@ -350,7 +350,7 @@ def models_shares_vars_selection_spyder_plot(experiments_folders, n_clusters, se
     return figs
 
 # Function to plot the heatmaps for the selected features across different experiments
-def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False):
+def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_list, atm_vars, idx_vars, display_percentage=False, sel_percentage=60):
     # Create the dataframe with the total selection for each variable
     max_columns = np.array([len(selected_vars_df.columns) for selected_vars_df in selected_vars_df_list]).max()
     n_lags = max_columns - 1
@@ -362,15 +362,22 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
             selected_vars_df_tot.iloc[:,1:max_columns-1] = selected_vars_df_tot.iloc[:,1:max_columns-1] + selected_vars_df.iloc[:,1:max_columns-1]
         else:
             selected_vars_df_tot.iloc[:,1:] = selected_vars_df_tot.iloc[:,1:] + selected_vars_df.iloc[:,1:]
-    
-    if n_clusters >= 10:
-        fig = plt.figure(figsize=(14, 8))
+    # Create the heatmap figure, if only on lag is considered plot the heatmaps on one row, otherwise plot on two rows
+    if n_lags == 1:
+        if n_clusters >= 10:
+            fig = plt.figure(figsize=(14, 4))
+        else:
+            fig = plt.figure(figsize=(10, 4))
+        gs = gridspec.GridSpec(1, 2, figure=fig)
     else:
-        fig = plt.figure(figsize=(10, 8))
-    gs = gridspec.GridSpec(2, 4, figure=fig)
-    # Dataframe to keep track of the variables that are chosen 60% of the time
-    sel_vars_60 = pd.DataFrame(columns=['lag', 'selected_vars'])
-    sel_vars_60.set_index('lag', inplace=True)
+        if n_clusters >= 10:
+            fig = plt.figure(figsize=(14, 8))
+        else:
+            fig = plt.figure(figsize=(10, 8))
+        gs = gridspec.GridSpec(2, 4, figure=fig)
+    # Dataframe to keep track of the variables that are chosen x% of the time, x is determined by sel_percentage
+    sel_vars_xp = pd.DataFrame(columns=['lag', 'selected_vars'])
+    sel_vars_xp.set_index('lag', inplace=True)
     # Plot heatmaps for each lag for the cluster variables
     for l in range(n_lags):
         # Create dataframe for the heatmap
@@ -384,7 +391,10 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
                 cluster_var_heatmap_df.loc[r] = row
         cluster_var_heatmap_df.set_index('variables', inplace=True)
         # Plot the heatmap
-        ax = fig.add_subplot(gs[l*2:(l*2)+2])
+        if n_lags == 1:
+            ax = fig.add_subplot(gs[l])
+        else:
+            ax = fig.add_subplot(gs[l*2:(l*2)+2])
         if display_percentage:
             cluster_var_heatmap_df = cluster_var_heatmap_df / len(experiments_folders) * 100
             vmax = 100
@@ -399,12 +409,15 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
         if display_percentage:
             for text in ax.texts:
                 text.set_text(f"{(float(text.get_text())):.0f}%")
-        # Add to the sel_vars_60 df list the variables that are selected 60% of the time for each lag
-        matches_60 = cluster_var_heatmap_df >= 60
-        result = [f'{index}_{col}' for index, row in matches_60.iterrows() for col in row.index if row[col]]
-        sel_vars_60.loc[l] = [result]
+        # Add to the sel_vars_xp df list the variables that are selected x% of the time for each lag
+        matches_xp = cluster_var_heatmap_df >= sel_percentage
+        result = [f'{index}_{col}' for index, row in matches_xp.iterrows() for col in row.index if row[col]]
+        sel_vars_xp.loc[l] = [result]
     # Plot the indexes heatmap
-    ax = fig.add_subplot(gs[5:7])
+    if n_lags == 1:
+        ax = fig.add_subplot(gs[1])
+    else:
+        ax = fig.add_subplot(gs[5:7])
     idxs_var_heatmap_df = selected_vars_df_tot[selected_vars_df_tot['column_names'].isin(idx_vars)]
     idxs_var_heatmap_df.set_index('column_names', inplace=True)
     if display_percentage:
@@ -419,17 +432,17 @@ def vars_selection_heatmaps(experiments_folders, n_clusters, selected_vars_df_li
 
     fig.set_tight_layout(True)
     # Add to the sel_vars_60 df list the indexes that are selected 60% of the time for each lag
-    matches_60 = idxs_var_heatmap_df >= 60
+    matches_xp = idxs_var_heatmap_df >= sel_percentage
     for l in range(n_lags):
-        lag_sel = idxs_var_heatmap_df[f'lag_{l}'][matches_60[f'lag_{l}']].index.to_list()
-        current_sel = sel_vars_60.loc[l].values.tolist()[0]
+        lag_sel = idxs_var_heatmap_df[f'lag_{l}'][matches_xp[f'lag_{l}']].index.to_list()
+        current_sel = sel_vars_xp.loc[l].values.tolist()[0]
         if len(lag_sel) > 0:
             new_sel = current_sel + lag_sel
         else:
             new_sel = current_sel
-        sel_vars_60.loc[l] = [new_sel] 
+        sel_vars_xp.loc[l] = [new_sel] 
 
-    return fig, sel_vars_60
+    return fig, sel_vars_xp
 
 # Function to plot the heatmaps for variable selection without considering the clusters
 # So in case of cluster variables, the selection is counted if at least one cluster is selected
