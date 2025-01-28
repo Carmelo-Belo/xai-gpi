@@ -191,8 +191,84 @@ def plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, res
                 # Save the figure
                 fig_name = f'{var}_lag{lag}_clusters_selected.pdf'
                 plt.savefig(os.path.join(save_figure_dir, fig_name), format='pdf', bbox_inches='tight', dpi=300)
-
                 plt.close()
+
+# Function to plot the clusters of a variable that are contained in a list
+def plot_clusters_variable(var, basin, n_clusters, label_selected_vars, data_dir):
+    # Set the domain extension for the figures
+    if basin == 'NWP':
+        west, east, south, north = 100, 180, 0, 40
+    elif basin == 'NEP':
+        west, east, south, north = -180, -75, 0, 40
+    elif basin == 'NA':
+        west, east, south, north = -100, 0, 0, 40
+    elif basin == 'NI':
+        west, east, south, north = 45, 100, 0, 40
+    elif basin == 'SP':
+        west, east, south, north = 135, -70, -40, 0
+    elif basin == 'SI':
+        west, east, south, north = 35, 135, -40, 0
+    elif basin == 'GLB':
+        west, east, south, north = -181, 181, -40, 40
+    else:
+        raise ValueError('Basin not recognized')
+
+    # Load the labels file
+    label_file = f'labels_{var}.csv'
+    label_df = pd.read_csv(os.path.join(data_dir, label_file), index_col=0)
+    unique_clusters = np.arange(1, n_clusters+1)
+
+    # Define a color map with fixed colors for each cluster and map the clusters to the colors index
+    cmap = plt.get_cmap('tab20', n_clusters)
+    colors = cmap(np.linspace(0, 1, n_clusters))
+    full_cmap = mcolors.ListedColormap(colors)
+    norm = mcolors.BoundaryNorm(np.arange(n_clusters + 1) - 0.5, n_clusters)
+    cluster_to_color_index = {cluster: i for i, cluster in enumerate(unique_clusters)}
+
+    # Determine the clusters and corresponding lags selected for the variable
+    clusters_selected = np.asarray([int(long_name.split('_cluster')[1].split('_lag')[0]) 
+                                    for long_name in label_selected_vars if long_name.split('_cluster')[0] == var])
+    
+    # Select the rows of the label file that correspond to the selected clusters
+    label_df_selected = label_df[label_df['cluster'].isin(clusters_selected)]
+    
+    # Set the figure and gridlines of the map
+    fig = plt.figure(figsize=(30, 6))
+    if basin == 'NA':
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    else:
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+    ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
+    ax.coastlines(resolution='110m', linewidth=2)
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='gray', alpha=0.5, linestyle='--')
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xformatter = LongitudeFormatter()
+    gl.yformatter = LatitudeFormatter()
+    gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 20))
+    gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 10))
+    gl.xlabel_style = {'size': 20} 
+    gl.ylabel_style = {'size': 20}
+
+    # Plot only the selected clusters using their index in the full color map
+    scatter = ax.scatter(
+        label_df_selected['nodes_lon'].values, 
+        label_df_selected['nodes_lat'].values,
+        c=[cluster_to_color_index[cluster] for cluster in label_df_selected['cluster']],
+        cmap=full_cmap, norm=norm, s=400, transform=ccrs.PlateCarree()
+    )
+
+    # Create a colorbar showing all clusters
+    cbar = plt.colorbar(scatter, ax=ax, orientation='vertical', ticks=np.arange(n_clusters))
+    cbar.set_ticklabels(unique_clusters)
+    cbar.ax.tick_params(labelsize=22)
+    cbar.set_label('Cluster', fontsize=26)
+    
+    ax.set_title(f'{var}', fontsize=30)
+    plt.tight_layout()
+    
+    return fig
 
 # Function to plot the training loss and the validation loss during the training of the model
 def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, test_loss, test_loss_noFS):

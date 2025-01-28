@@ -72,7 +72,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     nc_string = results_folder.split('_')[2]
     if "A" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
-    if "DS" in nc_string:
+    elif "DS" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
         target_season = 'target_seasonality_1970-2022_2.5x2.5.csv'
     else:
