@@ -476,6 +476,39 @@ def vars_selection_heatmaps_no_cluster(experiments_folders, selected_vars_df_lis
     fig.set_tight_layout(True)
     return fig
 
+# Function to plot a box plot of the correlation between the selected features and the target variable
+def plot_correlation_boxplot(track_df, n_clusters=4, cluster_type='all', fitness_model='all', corr='R_Y'):
+    # Raise error if one of the input is not recognized
+    if n_clusters < 4 or n_clusters > 12:
+        raise ValueError('Number of clusters not valid: must be between 4 and 12, 4 means all clusters number')
+    if cluster_type not in ['all', '_nc', 'Anc', 'DSnc']:
+        raise ValueError('Cluster type not recognized: must be one of all, _nc, Anc, DSnc')
+    if fitness_model not in ['all', 'linreg', 'lgbm', 'pi-lgbm']:
+        raise ValueError('Fitness model not recognized: must be one of all, linreg, lgbm, pi-lgbm')
+    if corr not in ['R', 'R_S', 'R_Y']:
+        raise ValueError('Correlation type not recognized: must be one of R, R_S, R_Y')
+    # Load the data
+    df = track_df.copy()
+    # Filter the data according to the input
+    if n_clusters > 4:
+        df = df[df['n_clusters'] == n_clusters]
+    if cluster_type != 'all':
+        df = df[df.index.str.contains(cluster_type)]
+    if fitness_model != 'all':
+        df = df[df.index.str.contains(fitness_model)]
+    # Get the best correlation out of the fitted final models
+    performance_col = [f'{corr}_mlp', f'{corr}_pi-mlp', f'{corr}_lgbm', f'{corr}_pi-lgbm']
+    df[f'max_{corr}'] = df[performance_col].max(axis=1)
+    performance_col_noFS = [f'{corr}_mlp_noFS', f'{corr}_pi-mlp_noFS', f'{corr}_lgbm_noFS', f'{corr}_pi-lgbm_noFS']
+    df[f'max_{corr}_noFS'] = df[performance_col_noFS].max(axis=1)
+    # Plot the boxplot
+    BestR = df[f'max_{corr}'].to_numpy()
+    BestR_noFS = df[f'max_{corr}_noFS'].to_numpy()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.boxplot([BestR, BestR_noFS], labels=['FS', 'NoFS'], showfliers=True, showmeans=True, meanline=True)
+    ax.set_ylabel(f'Best {corr} value')
+    return fig, ax
+
 # Functions to display saved pdf or matplotlib figure in the notebook or in dashboard
 def load_pdf_convert_to_image(pdf_path):
     with open(pdf_path, "rb") as file:
