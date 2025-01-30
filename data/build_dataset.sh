@@ -10,5 +10,7 @@ for basin in "${basins[@]}"; do
         python3 build_dataset.py --n_clusters $n_cluster --basin $basin --anomaly_clustering 'n' --remove_seasonality 'n'
         echo "Building dataset for $basin with $n_cluster anomaly clusters"
         python3 build_dataset.py --n_clusters $n_cluster --basin $basin --anomaly_clustering 'y' --remove_seasonality 'n'
+        echo "Building dataset for $basin with $n_cluster deseasonalized clusters"
+        python3 build_dataset.py --n_clusters $n_cluster --basin $basin --anomaly_clustering 'n' --remove_seasonality 'y'
     done
 done
