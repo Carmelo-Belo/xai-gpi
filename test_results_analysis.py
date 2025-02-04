@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from keras.models import Sequential, Model
+from keras.models import Model
 from keras import Input, Model, layers, regularizers, callbacks
 from keras.optimizers.legacy import Adam
 from lightgbm import LGBMRegressor

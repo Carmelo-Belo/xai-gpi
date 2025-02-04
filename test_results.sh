@@ -14,11 +14,17 @@ for basin in "${basins[@]}"; do
         for model in "${models[@]}"; do
             # Run the FS 5 times for each configuration
             for i in {1..5}; do
+                # Normal clusters
                 echo "Running results analysis for $basin, $n_cluster clusters, $model model, test number $i" 
                 output_folder="test${i}_${model}_nc${n_cluster}_nv${n_vars}_nd${n_idxs}"
                 python3 test_results_analysis.py --basin $basin --n_clusters $n_cluster --n_vars $n_vars --n_idxs $n_idxs --results_folder $output_folder --model_kind $model
+                # Anomaly clusters
                 echo "Running results analysis for $basin, $n_cluster anomaly clusters, $model model, test number $i" 
                 output_folder="test${i}_${model}_Anc${n_cluster}_nv${n_vars}_nd${n_idxs}"
+                python3 test_results_analysis.py --basin $basin --n_clusters $n_cluster --n_vars $n_vars --n_idxs $n_idxs --results_folder $output_folder --model_kind $model
+                # Deseasonalized clusters
+                echo "Running results analysis for $basin, $n_cluster deseasonalized clusters, $model model, test number $i"
+                output_folder="test${i}_${model}_DSnc${n_cluster}_nv${n_vars}_nd${n_idxs}"
                 python3 test_results_analysis.py --basin $basin --n_clusters $n_cluster --n_vars $n_vars --n_idxs $n_idxs --results_folder $output_folder --model_kind $model
             done
         done
