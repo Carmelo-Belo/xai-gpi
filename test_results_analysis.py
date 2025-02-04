@@ -136,7 +136,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
 
     # Compute correlations between the candidate variabels and the target variable
-    years = np.arange(start_year, end_year, 1)
+    years = np.arange(start_year, end_year+1, 1)
     filtered_target_df = target_df.loc[target_df.index.year.isin(years)]
     series1 = filtered_target_df['tcg'].to_numpy()
     filtered_predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
