@@ -11,6 +11,14 @@ from sklearn.inspection import permutation_importance
 import shap
 import utils_results as ut
 
+# python3 run_investigation.py --basin 'GLB' --run_name 'test2_linreg_nc10_nv8_nd9'
+# python3 run_investigation.py --basin 'NWP' --run_name 'test5_lgbm_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NI' --run_name 'test5_linreg_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NEP' --run_name 'test2_lgbm_nc7_nv8_nd9'
+# python3 run_investigation.py --basin 'NA' --run_name 'test1_linreg_nc8_nv8_nd9'
+# python3 run_investigation.py --basin 'SI' --run_name 'test5_linreg_nc9_nv8_nd9'
+# python3 run_investigation.py --basin 'SP' --run_name 'test4_pi-lgbm_nc7_nv8_nd9'
+
 def main(basin, run_name):
     # Set parameters for later use
     years = np.arange(1980, 2022, 1) # from 1980 to 2021 included
@@ -191,37 +199,40 @@ def main(basin, run_name):
         mlpreg.save(os.path.join(models_savedir, f'mlp_fold{n_fold+1}.keras'))
         mlpreg_noFS.save(os.path.join(models_savedir, f'mlp_noFS_fold{n_fold+1}.keras'))
 
+        feature_names = ['{}'.format(col.split('_l')[0]) for col in np.array(X_test.columns)]
+        feature_names_noFS = ['{}'.format(col.split('_l')[0]) for col in np.array(X_test_noFS.columns)]
         ## Compute the permutation feature importance for the 2 models ##
         imp_mlp = permutation_importance(mlpreg, X_test, Y_test_fold, n_repeats=10, random_state=42, scoring='neg_mean_squared_error')
         imp_mlp_noFS = permutation_importance(mlpreg_noFS, X_test_noFS, Y_test_fold, n_repeats=10, random_state=42, scoring='neg_mean_squared_error')
         # Save them to file in the results folder
         explain_savedir = os.path.join(final_analysis_dir, 'explain_data')
         os.makedirs(explain_savedir, exist_ok=True)
-        np.savez(os.path.join(explain_savedir, f'perm_imp_fold{n_fold+1}_mlp.npz'),
+        np.savez(os.path.join(explain_savedir, f'perm_imp_mlp_fold{n_fold+1}.npz'),
                  importances_mean=imp_mlp.importances_mean,
                  importances_std=imp_mlp.importances_std,
                  importances=imp_mlp.importances,
-                 features_names=X_test.columns)
-        np.savez(os.path.join(explain_savedir, f'perm_imp_fold{n_fold+1}_mlp_noFS.npz'),
+                 feature_names=feature_names)
+        np.savez(os.path.join(explain_savedir, f'perm_imp_mlp_noFS_fold{n_fold+1}.npz'),
                  importances_mean=imp_mlp_noFS.importances_mean,
                  importances_std=imp_mlp_noFS.importances_std,
-                 importances=imp_mlp_noFS.importances)
+                 importances=imp_mlp_noFS.importances,
+                 feature_names=feature_names_noFS)
         ## Compute the SHAP values for the 2 models ##
-        expl_mlp = shap.Explainer(mlpreg.predict, X_t, silent=True)
-        expl_mlp_noFS = shap.Explainer(mlpreg_noFS.predict, X_t_noFS, silent=True)
-        shapv_mlp = expl_mlp(X_test, silent=True)
-        shapv_mlp_noFS = expl_mlp_noFS(X_test_noFS, silent=True)
+        expl_mlp = shap.Explainer(mlpreg.predict, X_t)
+        expl_mlp_noFS = shap.Explainer(mlpreg_noFS.predict, X_t_noFS)
+        shapv_mlp = expl_mlp(X_test)
+        shapv_mlp_noFS = expl_mlp_noFS(X_test_noFS)
         # Save them to file in the results folder
-        np.savez(os.path.join(explain_savedir, f'shap_fold{n_fold+1}_mlp.npz'),
+        np.savez(os.path.join(explain_savedir, f'shap_mlp_fold{n_fold+1}.npz'),
                  shap_values=shapv_mlp.values,      # SHAP values
                  base_values=shapv_mlp.base_values, # base values
                  data=shapv_mlp.data,               # original data
-                 features_names=X_test.columns)
-        np.savez(os.path.join(explain_savedir, f'shap_fold{n_fold+1}_mlp_noFS.npz'),
+                 feature_names=feature_names)       # feature names
+        np.savez(os.path.join(explain_savedir, f'shap_mlp_noFS_fold{n_fold+1}.npz'),
                  shap_values=shapv_mlp_noFS.values,
                  base_values=shapv_mlp_noFS.base_values,
                  data=shapv_mlp_noFS.data,
-                 features_names=X_test_noFS.columns)
+                 feature_names=feature_names_noFS)
 
         print(f'Fold {n_fold+1}/{n_folds} - Processed Neural Networks')
 
