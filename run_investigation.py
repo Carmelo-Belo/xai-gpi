@@ -102,12 +102,6 @@ def main(basin, run_name):
     Y_pred_mlp = pd.DataFrame()
     Y_pred_mlp_noFS = pd.DataFrame()
 
-    # Initialize the list to store SHAP values
-    explainer_mlp = []
-    explainer_mlp_noFS = []
-    X_test_eval = []
-    X_test_eval_noFS = []
-
     for n_fold, (train_index, test_index) in enumerate(kfold.split(years)):
 
         # Set the indices for the training and test datasets
