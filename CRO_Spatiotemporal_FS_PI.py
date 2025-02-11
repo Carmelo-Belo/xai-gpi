@@ -174,26 +174,6 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
                 X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
                 Y_train_fold, Y_val_fold = Y_train.iloc[train_index], Y_train.iloc[val_index]
                 gpi_pi_train_fold, gpi_pi_val_fold = gpi_pi_train.iloc[train_index], gpi_pi_train.iloc[val_index]
-                ## PI-MLP ##
-                # # Define the model and compile it
-                # inputs = Input(shape=(len(X_train.columns),))
-                # x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(inputs)
-                # output = layers.Dense(1)(x)
-                # model = PI_model(inputs, output)
-                # model.compile(optimizer=optimizers.Adam(learning_rate=0.001))
-                # # Prepare the training data and the validation datasets
-                # train_data = tf.data.Dataset.from_tensor_slices((X_train_fold.values, (Y_train_fold.values, gpi_pi_train_fold.values))).batch(32)
-                # val_data = tf.data.Dataset.from_tensor_slices((X_val_fold.values, (Y_val_fold.values, gpi_pi_val_fold.values))).batch(32)
-                # # Train model
-                # callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-                # history = model.fit(train_data, validation_data=val_data, epochs=100, verbose=0, callbacks=[callback])
-                # # Evaluate model
-                # cv_scores.append(history.history['loss'][-1])
-                # test_losses.append(model.evaluate(X_test.values, (Y_test.values, gpi_pi_test.values), verbose=0))
-                # # Y_pred_train.loc[X_train_fold.index] = model.predict(X_train_fold).reshape(-1)
-                # Y_pred_test.loc[X_test.index] = model.predict(X_test).reshape(-1)
-                ## PI-LGBM ##
-                # Prepare the dataset
                 # Train the model
                 def lgbm_custom_obj(y_true, y_pred):
                     gpi = gpi_pi_train_fold
