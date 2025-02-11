@@ -12,12 +12,25 @@ import shap
 import utils_results as ut
 
 # python3 run_investigation.py --basin 'GLB' --run_name 'test2_linreg_nc10_nv8_nd9'
+# python3 run_investigation.py --basin 'GLB' --run_name 'test48_pi-lgbm_nc10_nv8_nd9'
+
 # python3 run_investigation.py --basin 'NWP' --run_name 'test5_lgbm_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NWP' --run_name 'test88_lgbm_nc6_nv8_nd9'
+
 # python3 run_investigation.py --basin 'NI' --run_name 'test5_linreg_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NI' --run_name 'test61_linreg_nc6_nv8_nd9'
+
 # python3 run_investigation.py --basin 'NEP' --run_name 'test2_lgbm_Anc7_nv8_nd9'
+# python3 run_investigation.py --basin 'NEP' --run_name 'test71_linreg_Anc7_nv8_nd9'
+
 # python3 run_investigation.py --basin 'NA' --run_name 'test1_linreg_Anc8_nv8_nd9'
+# python3 run_investigation.py --basin 'NA' --run_name 'test29_linreg_Anc8_nv8_nd9'
+
 # python3 run_investigation.py --basin 'SI' --run_name 'test5_linreg_DSnc9_nv8_nd9'
+# python3 run_investigation.py --basin 'SI' --run_name 'test34_linreg_DSnc9_nv8_nd9'
+
 # python3 run_investigation.py --basin 'SP' --run_name 'test4_pi-lgbm_DSnc7_nv8_nd9'
+# python3 run_investigation.py --basin 'SP' --run_name 'test29_linreg_DSnc7_nv8_nd9'
 
 def main(basin, run_name):
     # Set parameters for later use
