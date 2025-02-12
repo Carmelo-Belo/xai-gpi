@@ -1,0 +1,10 @@
+,50,60,75,90
+0,abs_vo850_cluster1,abs_vo850_cluster1,abs_vo850_cluster1,abs_vo850_cluster1
+1,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,mpi_cluster3
+2,mpi_cluster3,mpi_cluster3,mpi_cluster3,w_cluster3
+3,msl_cluster3,msl_cluster3,vo850_cluster6,
+4,vo850_cluster6,vo850_cluster6,w_cluster1,
+5,w_cluster1,w_cluster1,w_cluster3,
+6,w_cluster3,w_cluster3,,
+7,SOI,TNA,,
+8,TNA,,,

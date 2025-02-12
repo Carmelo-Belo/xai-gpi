@@ -1,0 +1,14 @@
+,50,60,75,90
+0,abs_vo850_cluster2,abs_vo850_cluster2,mpi_cluster8,mpi_cluster8
+1,abs_vo850_cluster9,abs_vo850_cluster9,sst_cluster3,
+2,mpi_cluster8,mpi_cluster8,vws850-200_cluster10,
+3,msl_cluster2,msl_cluster2,PDO,
+4,msl_cluster10,sst_cluster3,month,
+5,sst_cluster3,sst_cluster8,,
+6,sst_cluster5,vws850-200_cluster10,,
+7,sst_cluster6,PDO,,
+8,sst_cluster8,month,,
+9,vws850-200_cluster10,,,
+10,PDO,,,
+11,SOI,,,
+12,month,,,
