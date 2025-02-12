@@ -13,24 +13,31 @@ import utils_results as ut
 
 # python3 run_investigation.py --basin 'GLB' --run_name 'test2_linreg_nc10_nv8_nd9'
 # python3 run_investigation.py --basin 'GLB' --run_name 'test48_pi-lgbm_nc10_nv8_nd9'
+# python3 run_investigation.py --basin 'GLB' --run_name 'selfeat50_top20_nc10_nv8_nd9'
 
 # python3 run_investigation.py --basin 'NWP' --run_name 'test5_lgbm_nc6_nv8_nd9'
 # python3 run_investigation.py --basin 'NWP' --run_name 'test88_lgbm_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NWP' --run_name 'selfeat50_top20_nc6_nv8_nd9'
 
 # python3 run_investigation.py --basin 'NI' --run_name 'test5_linreg_nc6_nv8_nd9'
 # python3 run_investigation.py --basin 'NI' --run_name 'test61_linreg_nc6_nv8_nd9'
+# python3 run_investigation.py --basin 'NI' --run_name 'selfeat50_top20_nc6_nv8_nd9'
 
 # python3 run_investigation.py --basin 'NEP' --run_name 'test2_lgbm_Anc7_nv8_nd9'
 # python3 run_investigation.py --basin 'NEP' --run_name 'test71_linreg_Anc7_nv8_nd9'
+# python3 run_investigation.py --basin 'NEP' --run_name 'selfeat50_top20_Anc7_nv8_nd9'
 
 # python3 run_investigation.py --basin 'NA' --run_name 'test1_linreg_Anc8_nv8_nd9'
 # python3 run_investigation.py --basin 'NA' --run_name 'test29_linreg_Anc8_nv8_nd9'
+# python3 run_investigation.py --basin 'NA' --run_name 'selfeat50_top20_Anc8_nv8_nd9'
 
 # python3 run_investigation.py --basin 'SI' --run_name 'test5_linreg_DSnc9_nv8_nd9'
 # python3 run_investigation.py --basin 'SI' --run_name 'test34_linreg_DSnc9_nv8_nd9'
+# python3 run_investigation.py --basin 'SI' --run_name 'selfeat50_top20_DSnc9_nv8_nd9'
 
 # python3 run_investigation.py --basin 'SP' --run_name 'test4_pi-lgbm_DSnc7_nv8_nd9'
 # python3 run_investigation.py --basin 'SP' --run_name 'test29_linreg_DSnc7_nv8_nd9'
+# python3 run_investigation.py --basin 'SP' --run_name 'selfeat50_top20_DSnc7_nv8_nd9'
 
 def main(basin, run_name):
     # Set parameters for later use
@@ -58,11 +65,23 @@ def main(basin, run_name):
     sol_filename = f'{model_kind}_' + experiment_filename
     predictor_file = 'predictors_' + experiment_filename
     fs_dir = os.path.join(project_dir, 'FS_TCG')
-    output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+    if "test" in run_name:
+        output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+        sol_path = os.path.join(output_dir, sol_filename)
+        best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
+        # Load the solutions file in a DataFrame and the best solution found
+        best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
+        best_solution = best_solution.to_numpy().flatten()
+        # Select the variables from the best solutions
+        column_names = predictors_df.columns.tolist()
+        final_sequence = best_solution[len(column_names):2*len(column_names)]
+        sequence_length = best_solution[:len(column_names)]
+        feat_sel = best_solution[2*len(column_names):]
+    else:
+        output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+        os.makedirs(output_dir, exist_ok=True)
     final_analysis_dir = os.path.join(output_dir, 'final_analysis')
     os.makedirs(final_analysis_dir, exist_ok=True)
-    sol_path = os.path.join(output_dir, sol_filename)
-    best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
     data_dir = os.path.join(fs_dir, 'data', cluster_data)
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)
@@ -80,27 +99,52 @@ def main(basin, run_name):
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
     gpi_pi = gpis_df['ogpi']
-    # Load the solutions file in a DataFrame and the best solution found
-    sol_file_df = pd.read_csv(sol_path, sep=' ', header=0)
-    best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
-    best_solution = best_solution.to_numpy().flatten()
-    # Select the variables from the best solutions
-    column_names = predictors_df.columns.tolist()
-    final_sequence = best_solution[len(column_names):2*len(column_names)]
-    sequence_length = best_solution[:len(column_names)]
-    feat_sel = best_solution[2*len(column_names):]
+
     # Create dataset according to solution and list the labels of the selected variables
-    variable_selection = feat_sel.astype(int)
-    time_sequences = sequence_length.astype(int)
-    time_lags = final_sequence.astype(int)
-    label_selected_vars = []
-    dataset_opt = target_df.copy()
-    for c, col in enumerate(predictors_df.columns):
-        if variable_selection[c] == 0 or time_sequences[c] == 0:
-            continue
-        for j in range(time_sequences[c]):
-            dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
-            label_selected_vars.append(str(col) +'_lag'+ str(time_lags[c]+j))
+    if "test" in run_name:
+        variable_selection = feat_sel.astype(int)
+        time_sequences = sequence_length.astype(int)
+        time_lags = final_sequence.astype(int)
+        dataset_opt = target_df.copy()
+        for c, col in enumerate(predictors_df.columns):
+            if variable_selection[c] == 0 or time_sequences[c] == 0:
+                continue
+            for j in range(time_sequences[c]):
+                dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
+    else:
+        if basin == 'GLB':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster2', 'abs_vo850_cluster9', 'mpi_cluster8', 'msl_cluster2', 'msl_cluster10', 'sst_cluster3', 'sst_cluster5',
+                                 'sst_cluster6', 'sst_cluster8', 'vws850-200_cluster10', 'PDO', 'SOI', 'month']
+        elif basin == 'NWP':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster2', 'abs_vo850_cluster5', 'sst_cluster1', 'vo850_cluster1', 'vo850_cluster2', 'w_cluster4', 'PNA', 'TNA']
+        elif basin == 'NI':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster1', 'abs_vo850_cluster3', 'mpi_cluster3', 'msl_cluster3', 'vo850_cluster6', 'w_cluster1', 'w_cluster3', 'SOI', 'TNA']
+        elif basin == 'NEP':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster1', 'msl_cluster2', 'msl_cluster4', 'msl_cluster7', 'r700_cluster2', 'r700_cluster7', 'sst_cluster1', 
+                                 'vo850_cluster1', 'vo850_cluster6', 'vws850-200_cluster6', 'w_cluster2', 'month']
+        elif basin == 'NA':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster1', 'abs_vo850_cluster2', 'abs_vo850_cluster7', 'mpi_cluster3', 'mpi_cluster5', 'mpi_cluster6', 'mpi_cluster7', 
+                                 'msl_cluster7', 'msl_cluster8', 'r700_cluster7', 'r700_cluster8', 'sst_cluster3', 'sst_cluster6', 'vo850_cluster1', 'vo850_cluster2', 
+                                 'vws850-200_cluster3', 'vws850-200_cluster5', 'w_cluster4', 'ENSO3.4', 'SOI']
+        elif basin == 'SI':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster2', 'mpi_cluster9', 'r700_cluster1', 'r700_cluster7', 'sst_cluster7', 'vo850_cluster6', 'vo850_cluster9', 
+                                 'vws850-200_cluster8', 'vws850-200_cluster9', 'w_cluster8', 'NAO', 'PNA', 'TNA', 'TSA', 'WP']
+        elif basin == 'SP':
+            # features selected > 50% of the time in the top20% best models
+            selected_features = ['abs_vo850_cluster2', 'abs_vo850_cluster5', 'mpi_cluster2', 'msl_cluster1', 'msl_cluster6', 'msl_cluster7', 'r700_cluster1', 'sst_cluster2', 
+                                 'vo850_cluster3', 'vws850-200_cluster1', 'vws850-200_cluster2', 'vws850-200_cluster7', 'w_cluster1', 'PDO', 'TSA']
+        else:
+            raise ValueError('Basin not recognized')
+        dataset_opt = predictors_df[selected_features]
+        dataset_opt.columns = [f'{feat}_lag0' for feat in dataset_opt.columns]
+        dataset_opt['tcg'] = target_df['tcg']
+
     # Compone the dataset to train the model using all predictors possible
     dataset_opt_noFS = target_df.copy()
     for l in range(1):
