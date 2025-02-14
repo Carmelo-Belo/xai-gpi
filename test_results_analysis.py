@@ -62,7 +62,7 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
     eval_metric = mse_pred + mse_gpi
     return 'pi-mse_eval', eval_metric, False
 
-def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds, start_year, end_year):
+def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metric, n_folds, start_year, end_year):
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -119,8 +119,14 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     best_solution = best_solution.to_numpy().flatten()
 
     # Find the Cross-Validation and Test metric for the best solution found
-    CVbest = sol_file_df['CV'].idxmin() 
-    Testbest = sol_file_df['Test'].idxmin()
+    if acc_metric == 'mse':
+        CVbest = sol_file_df['CV'].idxmin() 
+        Testbest = sol_file_df['Test'].idxmin()
+    elif acc_metric == 'rY':
+        CVbest = sol_file_df['CV'].idxmax()
+        Testbest = sol_file_df['Test'].idxmax()
+    else:
+        raise ValueError('The accuracy metric is not valid. Please choose between "mse" or "rY".')
 
     # Plot the evolution of the different metrics for each solution found per evaluation
     # Cross-Validation metric
@@ -131,7 +137,10 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     ax.scatter(sol_file_df.index[Testbest], sol_file_df['Test'][Testbest], color='green', label='Test Best')
     ax.legend()
     ax.set_xlabel('Solutions')
-    ax.set_ylabel('Mean Squared Error')
+    if acc_metric == 'mse':
+        ax.set_ylabel('Mean Squared Error')
+    elif acc_metric == 'rY':
+        ax.set_ylabel('Pearson Correlation Coefficient')
     plt.tight_layout()
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
 
@@ -620,8 +629,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--results_folder', type=str, help='Name of experiment and of the output folder where to store the results')
     parser.add_argument('--model_kind', type=str, help='Model kind')
+    parser.add_argument('--acc_metric', type=str, help='Accuracy metric used in the FS process, can be either mse or rY (annual correlation)')
     parser.add_argument('--n_folds', type=int, default=3, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
     parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.n_folds, args.start_year, args.end_year)
+    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.acc_metric, args.n_folds, args.start_year, args.end_year)
