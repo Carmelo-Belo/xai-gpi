@@ -1,0 +1,15 @@
+,50,60,75,90
+0,abs_vo850_cluster6,mpi_cluster1,mpi_cluster1,mpi_cluster2
+1,mpi_cluster1,mpi_cluster2,mpi_cluster2,r700_cluster4
+2,mpi_cluster2,msl_cluster4,msl_cluster4,PDO
+3,msl_cluster4,msl_cluster8,msl_cluster8,TSA
+4,msl_cluster8,r700_cluster4,r700_cluster4,
+5,r700_cluster4,PDO,PDO,
+6,r700_cluster6,TSA,TSA,
+7,sst_cluster6,,,
+8,vws850-200_cluster7,,,
+9,w_cluster6,,,
+10,PDO,,,
+11,PNA,,,
+12,TSA,,,
+13,WP,,,

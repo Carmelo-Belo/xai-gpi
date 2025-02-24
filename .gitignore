@@ -18,6 +18,7 @@ results/SI/
 data/*clusters/
 data/*clusters_anomaly/
 data/*clusters_deseason/
+best_model_analysis/figures/
 *.out
 *.DS_Store
 
