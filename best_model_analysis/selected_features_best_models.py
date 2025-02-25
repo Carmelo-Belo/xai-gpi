@@ -104,39 +104,45 @@ def main():
     fig_dir = os.path.join(best_model_dir, 'figures')
     os.makedirs(fig_dir, exist_ok=True)
     # Set lists of basins, model kinds, cluster types, and number of clusters
-    basin_names = ['Global', 'North East Pacific', 'North West Pacific', 'North Atlantic', 'North Indian', 'South Indian', 'South Pacific']
-    basins = ['GLB', 'NEP', 'NWP', 'NA', 'NI', 'SI', 'SP']
-    model_kinds = ['linreg'] * 7
-    cluster_types = ['_nc', 'DSnc', 'Anc', 'DSnc', 'DSnc', 'DSnc', '_nc']
-    n_clusters = [12, 12, 10, 6, 12, 9, 7]
+    basin_dict = {
+        'GLB': ('Global', 'linreg', '_nc', 12), 
+        'NEP': ('North East Pacific', 'linreg', 'DSnc', 12), 
+        'NWP': ('North West Pacific', 'linreg', 'Anc', 10), 
+        'NA': ('North Atlantic', 'linreg', 'DSnc', 6), 
+        'NI': ('North Indian', 'linreg', 'DSnc', 12), 
+        'SI': ('South Indian', 'linreg', 'DSnc', 9), 
+        'SP': ('South Pacific', 'linreg', '_nc', 7)
+        }
+    # basin_names = ['Global', 'North East Pacific', 'North West Pacific', 'North Atlantic', 'North Indian', 'South Indian', 'South Pacific']
+    # basins = ['GLB', 'NEP', 'NWP', 'NA', 'NI', 'SI', 'SP']
+    # model_kinds = ['linreg'] * 7
+    # cluster_types = ['_nc', 'DSnc', 'Anc', 'DSnc', 'DSnc', 'DSnc', '_nc']
+    # n_clusters = [12, 12, 10, 6, 12, 9, 7]
     FINAL_MODEL = 'mlp'
     # Loop over basins
-    for bb, basin in enumerate(basins):
+    for basin, (basin_name, model_kind, cluster_type, n_clusters) in basin_dict.items():
         # Load the performance file for the basin and filter to get the simulation with the best performance
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         track_df = track_df[track_df.index.str.contains('nd9')]
-        track_df = track_df[track_df.index.str.contains(model_kinds[bb])]
-        track_df = track_df[track_df.index.str.contains(cluster_types[bb])]
-        track_df = track_df[track_df['n_clusters'] == n_clusters[bb]]
+        track_df = track_df[track_df.index.str.contains(model_kind)]
+        track_df = track_df[track_df.index.str.contains(cluster_type)]
+        track_df = track_df[track_df['n_clusters'] == n_clusters]
         # Get the simulation with the best performance
         performance_col = f'R_Y_{FINAL_MODEL}'
         sorted_df = track_df.sort_values(performance_col, ascending=False)
         best_sim = sorted_df.iloc[0]
-
-        n_cluster = n_clusters[bb]
-
         # Load predictors and candidate variables of the corresponding simulation
         nc_string = best_sim.name.split('_')[2]
         if "A" in nc_string:
-            cluster_data = f'{basin}_{n_cluster}clusters_anomaly'
+            cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
         elif "DS" in nc_string:
-            cluster_data = f'{basin}_{n_cluster}clusters_deseason'
+            cluster_data = f'{basin}_{n_clusters}clusters_deseason'
             target_season = 'target_seasonality_1970-2022_2.5x2.5.csv'
         else:
-            cluster_data = f'{basin}_{n_cluster}clusters'
+            cluster_data = f'{basin}_{n_clusters}clusters'
         # Set the paths to files
-        experiment_filename = f'1970-2022_{n_cluster}clusters_8vars_9idxs.csv'
+        experiment_filename = f'1970-2022_{n_clusters}clusters_8vars_9idxs.csv'
         predictor_file = 'predictors_' + experiment_filename
         data_dir = os.path.join(fs_dir, 'data', cluster_data)
         predictors_path = os.path.join(data_dir, predictor_file)
@@ -164,7 +170,7 @@ def main():
                 df_tier_sel_perc.loc['Bot33%'] = df_tier_sel_perc.loc['Bot33%'] + feat_sel
         df_tier_sel_perc = (df_tier_sel_perc / 5) * 100
         # Plot the heatmap
-        fig = plt.figure(figsize=(3*n_cluster, 10))
+        fig = plt.figure(figsize=(3*n_clusters, 10))
         ax = sns.heatmap(df_tier_sel_perc, cmap="Blues", linewidths=0.5, linecolor="gray", square=True, figure=fig,
                         cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
         cbar = ax.collections[0].colorbar
@@ -180,10 +186,10 @@ def main():
         ax.set_xticks(np.arange(len(candidate_variables)) + 0.5)  
         ax.set_xticklabels(xticks_labels, rotation=40, ha="right", fontsize=12)
         for i, var in enumerate(sorted(set(variables), key=variables.index)):
-            xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_cluster/2
+            xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_clusters/2
             ax.text(xpos, len(df_tier_sel_perc) + 2, var, ha='center', va='center', fontsize=14, fontweight="bold")
         # Set the vertical lines between the different variables a bit thicker 
-        thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_cluster)]
+        thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_clusters)]
         for pos in thick_line_pos:
             ax.vlines(x=pos, ymin=-0.5, ymax=len(df_tier_sel_perc), linewidth=2.5, color="black")
         # Overlay red blocks at the bottom for zero columns
@@ -194,7 +200,7 @@ def main():
         # Set yticks labels fontsize
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=14)
         # Set the title
-        ax.set_title(f'{basin_names[bb]}', fontsize=16)
+        ax.set_title(f'{basin_name}', fontsize=16)
         # Save the figure
         basin_dir = os.path.join(fig_dir, basin)
         os.makedirs(basin_dir, exist_ok=True)
@@ -206,9 +212,9 @@ def main():
         track_file = os.path.join(results_dir, f'sim_performance_extra_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         track_df = track_df[track_df.index.str.contains('nd9')]
-        track_df = track_df[track_df.index.str.contains(model_kinds[bb])]
-        track_df = track_df[track_df.index.str.contains(cluster_types[bb])]
-        track_df = track_df[track_df['n_clusters'] == n_clusters[bb]]
+        track_df = track_df[track_df.index.str.contains(model_kind)]
+        track_df = track_df[track_df.index.str.contains(cluster_type)]
+        track_df = track_df[track_df['n_clusters'] == n_clusters]
         # Get the simulation with the best performance
         performance_col = f'R_Y_{FINAL_MODEL}'
         sorted_df_extra = track_df.sort_values(performance_col, ascending=False)
@@ -237,7 +243,7 @@ def main():
             else:
                 df_tier_sel_perc_extra.loc['Bot20%'] = df_tier_sel_perc_extra.loc['Bot20%'] + feat_sel
         df_tier_sel_perc_extra = (df_tier_sel_perc_extra / (n_sim * 0.2)) * 100
-        fig = plt.figure(figsize=(3*n_cluster, 10))
+        fig = plt.figure(figsize=(3*n_clusters, 10))
         ax = sns.heatmap(df_tier_sel_perc_extra, cmap="Blues", linewidths=0.5, linecolor="gray", square=True, figure=fig,
                         cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
         cbar = ax.collections[0].colorbar
@@ -253,10 +259,10 @@ def main():
         ax.set_xticks(np.arange(len(candidate_variables)) + 0.5)  
         ax.set_xticklabels(xticks_labels, rotation=40, ha="right", fontsize=12)
         for i, var in enumerate(sorted(set(variables), key=variables.index)):
-            xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_cluster/2
+            xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_clusters/2
             ax.text(xpos, len(df_tier_sel_perc_extra) + 2, var, ha='center', va='center', fontsize=14, fontweight="bold")
         # Set the vertical lines between the different variables a bit thicker 
-        thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_cluster)]
+        thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_clusters)]
         for pos in thick_line_pos:
             ax.vlines(x=pos, ymin=-0.5, ymax=len(df_tier_sel_perc_extra), linewidth=2.5, color="black")
         # Overlay red blocks at the bottom for zero columns
@@ -265,7 +271,7 @@ def main():
             if is_zero:
                 ax.add_patch(plt.Rectangle((idx, len(df_tier_sel_perc_extra) - 0.55), 1, 0.5, color='red', clip_on=False))
         # Set the title
-        ax.set_title(f'{basin_names[bb]}', fontsize=16)
+        ax.set_title(f'{basin_name}', fontsize=16)
         # Set the yticks labels fontsize
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=14)
         # Save the figure
@@ -282,10 +288,10 @@ def main():
                                                best_models_perc[best_models_perc >= 80].index.to_list(),
                                                best_models_perc[best_models_perc >= 90].index.to_list()),
                                                columns=['50', '60', '70', '75', '80', '90'])
-        if cluster_types[bb] == '_nc':
-            csv_path = os.path.join(results_dir, f'selected_features_best_models_{basin}{cluster_types[bb]}{n_cluster}.csv')
+        if cluster_type == '_nc':
+            csv_path = os.path.join(results_dir, f'selected_features_best_models_{basin}{cluster_type}{n_clusters}.csv')
         else:
-            csv_path = os.path.join(results_dir, f'selected_features_best_models_{basin}_{cluster_types[bb]}{n_cluster}.csv')
+            csv_path = os.path.join(results_dir, f'selected_features_best_models_{basin}_{cluster_type}{n_clusters}.csv')
         df_perc_sel.to_csv(csv_path)
 
         ## Plot the selected variables clusters ##
@@ -293,7 +299,7 @@ def main():
             var_list = df_perc_sel[column].dropna().to_list()
             perc_fig_dir = os.path.join(basin_dir, f'sel_var_perc{column}')
             os.makedirs(perc_fig_dir, exist_ok=True)
-            figs, cluster_vars = plot_selected_variables_clusters(basin, n_cluster, data_dir, var_list)
+            figs, cluster_vars = plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list)
             for i, fig in enumerate(figs):
                 fig_path = os.path.join(perc_fig_dir, f'{cluster_vars[i]}.pdf')
                 fig.savefig(fig_path, format='pdf', dpi=300, bbox_inches='tight')

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Cycle through the different percentage of selection
-basin="NA"
-clusters_string="DSnc6"
+basin="SP"
+clusters_string="nc7"
 # sel_percs=("50" "60" "70" "75" "80" "90")
 sel_percs=("70" "80")
 
