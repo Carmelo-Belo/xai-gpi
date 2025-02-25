@@ -21,7 +21,7 @@ def plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list):
     cluster_variables = list(set([var.split('_cluster')[0] for var in var_list if 'cluster' in var]))
     # Set the domain extension for the figures
     if basin == 'NWP':
-            west, east, south, north = 100, 180, 0, 40
+        west, east, south, north = 100, 180, 0, 40
     elif basin == 'NEP':
         west, east, south, north = -180, -75, 0, 40
     elif basin == 'NA':
@@ -107,7 +107,7 @@ def main():
     basin_names = ['Global', 'North East Pacific', 'North West Pacific', 'North Atlantic', 'North Indian', 'South Indian', 'South Pacific']
     basins = ['GLB', 'NEP', 'NWP', 'NA', 'NI', 'SI', 'SP']
     model_kinds = ['linreg'] * 7
-    cluster_types = ['DSnc', 'DSnc', 'Anc', 'DSnc', 'DSnc', 'DSnc', '_nc']
+    cluster_types = ['_nc', 'DSnc', 'Anc', 'DSnc', 'DSnc', 'DSnc', '_nc']
     n_clusters = [12, 12, 10, 6, 12, 9, 7]
     FINAL_MODEL = 'mlp'
     # Loop over basins
@@ -277,9 +277,11 @@ def main():
         best_models_perc = df_tier_sel_perc_extra.loc['Top20%']
         df_perc_sel = pd.DataFrame(zip_longest(best_models_perc[best_models_perc >= 50].index.to_list(),
                                                best_models_perc[best_models_perc >= 60].index.to_list(),
+                                               best_models_perc[best_models_perc >= 70].index.to_list(),
                                                best_models_perc[best_models_perc >= 75].index.to_list(),
+                                               best_models_perc[best_models_perc >= 80].index.to_list(),
                                                best_models_perc[best_models_perc >= 90].index.to_list()),
-                                               columns=['50', '60', '75', '90'])
+                                               columns=['50', '60', '70', '75', '80', '90'])
         if cluster_types[bb] == '_nc':
             csv_path = os.path.join(results_dir, f'selected_features_best_models_{basin}{cluster_types[bb]}{n_cluster}.csv')
         else:

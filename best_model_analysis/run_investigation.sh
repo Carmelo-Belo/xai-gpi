@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Cycle through the different percentage of selection
-basin="SP"
-clusters_string="nc7"
-# sel_percs=("50" "60" "75" "90")
-sel_percs=("60" "75" "90")
+basin="NA"
+clusters_string="DSnc6"
+# sel_percs=("50" "60" "70" "75" "80" "90")
+sel_percs=("70" "80")
 
 for perc in "${sel_percs[@]}"; do
     run_name="selfeat${perc}_top20_${clusters_string}_nv8_nd9"
