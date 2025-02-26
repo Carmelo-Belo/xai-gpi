@@ -271,7 +271,7 @@ def main():
             if is_zero:
                 ax.add_patch(plt.Rectangle((idx, len(df_tier_sel_perc_extra) - 0.55), 1, 0.5, color='red', clip_on=False))
         # Set the title
-        ax.set_title(f'{basin_name}', fontsize=16)
+        # ax.set_title(f'{basin_name}', fontsize=16)
         # Set the yticks labels fontsize
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=14)
         # Save the figure
