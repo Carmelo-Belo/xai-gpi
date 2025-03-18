@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import os
-from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
 
 def crop_field(var, lon1, lon2, lat1, lat2):
     """
@@ -124,3 +124,89 @@ def build_dataset(basin, cluster_variables, index_variables, cluster_path, index
         return dataset, target, seasonal
     else:
         return dataset, target
+    
+def build_dataset_noTS(basin, cluster_variables, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, month_col=True):
+    
+    # Define geographical coordinates according to the basin considered
+    if basin == 'NWP':
+        min_lon, max_lon, min_lat, max_lat = 100, 180, 0, 40
+    elif basin == 'NEP':
+        min_lon, max_lon, min_lat, max_lat = -180, -75, 0, 40
+    elif basin == 'NA':
+        min_lon, max_lon, min_lat, max_lat = -100, 0, 0, 40
+    elif basin == 'NI':
+        min_lon, max_lon, min_lat, max_lat = 45, 100, 0, 40
+    elif basin == 'SP':
+        min_lon, max_lon, min_lat, max_lat = 135, -70, -40, 0
+    elif basin == 'SI':
+        min_lon, max_lon, min_lat, max_lat = 35, 135, -40, 0
+    elif basin == 'GLB':
+        min_lon, max_lon, min_lat, max_lat = -181, 181, -40, 40
+    else:
+        raise ValueError('Basin not recognized')
+
+    # Create a dataframe containing the data for the climate indeces
+    date_range = pd.date_range(start=f'{first_year}-01-01', end=f'{last_year}-12-01', freq='MS')
+    df_indeces = pd.DataFrame(index=date_range, columns=index_variables)
+    df_residual_indeces = pd.DataFrame(index=date_range, columns=index_variables)
+    for climate_index in index_variables:
+        filename = os.path.join(indexes_path, climate_index + '.txt')
+        data = pd.read_table(filename, sep='\s+', header=None)
+        for r, row in enumerate(df_indeces.iterrows()):
+            idx = df_indeces.index[r]
+            month = idx.month
+            year = idx.year
+            df_indeces.loc[idx, climate_index] = data[(data[0] == year)][month].values[0]
+        decomp_index = STL(df_indeces[climate_index]).fit()
+        df_residual_indeces[climate_index] = decomp_index.resid
+
+    # Load the cluster data and merge it in a single dataframe
+    for v, var in enumerate(cluster_variables):
+        filename = f'averages_{var}.csv'
+        path = os.path.join(cluster_path, filename)
+        if v == 0:
+            dataset_cluster = pd.read_csv(path, index_col=0, parse_dates=True)
+            dataset_cluster = dataset_cluster[dataset_cluster.index.isin(date_range)]
+        else:
+            temp = pd.read_csv(path, index_col=0, parse_dates=True)
+            temp = temp[temp.index.isin(date_range)]
+            dataset_cluster = pd.concat([dataset_cluster, temp], axis=1)
+
+    # Merge the cluster and index dataframes
+    dataset = pd.concat([dataset_cluster, df_residual_indeces], axis=1)
+
+    # Add a column containing the month of the year
+    if month_col:
+        dataset['month'] = dataset.index.month
+    
+    # Check if any data is missing, repeated in consecutive days, or is above the average+7*std
+    for col in dataset.columns:
+        if dataset[col].isnull().sum() > 0:
+            print('Warning: Missing values in', col)
+        check_consecutive_repeats(dataset[col],col)
+        mean = dataset[col].mean()
+        std = dataset[col].std()
+        if (np.abs(dataset[col]) > mean + 7*std).sum() > 0:
+            print('Warning: Values above the average+7*std in', col)
+
+    # Build the dataframe for the target variable -> number of tropical cyclone genesis events per month
+    years = np.arange(first_year, last_year+1, 1)
+    tcg_ds_or = xr.concat([xr.open_dataset(target_path + f'_{year}.nc') for year in years], dim='time')
+    if basin == 'NEP' or basin == 'NA':
+        tcg_ds = crop_field(tcg_ds_or, min_lon, max_lon, min_lat, max_lat)
+        mask = xr.open_dataarray(f'{basin}_mask.nc')
+        tcg_ds = tcg_ds.where(mask == 1)
+    elif basin != 'GLB':
+        tcg_ds = crop_field(tcg_ds_or, min_lon, max_lon, min_lat, max_lat)
+    else:
+        tcg_ds = tcg_ds_or
+    target = pd.DataFrame(index=date_range)
+    target['tcg'] = tcg_ds.tcg.sum(dim=['latitude', 'longitude']).values.astype(int)
+
+    # Detrend and deseasonalize the target variable
+    decomposition = STL(target['tcg']).fit()
+    trend = decomposition.trend.to_frame()
+    seasonal = decomposition.seasonal.to_frame()
+    residual = decomposition.resid.to_frame().rename(columns={0: 'tcg'})
+
+    return dataset, residual, trend, seasonal

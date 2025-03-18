@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build dataset for feature selection')
     parser.add_argument('--basin', type=str, default='GLB', help='Basin')
     parser.add_argument('--n_clusters', type=int, default=8, help='Number of clusters')
-    parser.add_argument('--anomaly_clustering', type=str, default='y', help='If y retrieve dataset of anomaly clustering')
+    parser.add_argument('--anomaly_clustering', type=str, default='n', help='If y retrieve dataset of anomaly clustering')
     parser.add_argument('--res', type=float, default=2.5, help='Resolution')
     parser.add_argument('--first_year', type=int, default=1970, help='First year')
     parser.add_argument('--last_year', type=int, default=2022, help='Last year')
