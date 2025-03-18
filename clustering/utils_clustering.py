@@ -12,7 +12,7 @@ import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
 import os
-from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
 
 class cluster_model:
 
@@ -406,6 +406,224 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         clusters_av_dataframe[var + '_cluster' + str(c+1)] = cluster_avg
 
     clusters_av_dataframe.index = total_data.time.values
+
+    # Create a dataframe with the cluster labels
+    labels_dataframe = pd.DataFrame(cluster.labels, columns=['cluster'])
+    labels_dataframe['nodes_lat'] = np.array(nodes_list)[:,0]
+    labels_dataframe['nodes_lon'] = np.array(nodes_list)[:,1]
+    labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
+
+    return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
+
+def deseason_detrend_3Darray(data):
+    """
+    Decompose a 3D xarray.DataArray into its seasonal, trend, and residual components. The decompiosition is performed along the time dimension.
+
+    Inputs:
+        data: xarray.DataArray
+            The data to decompose
+        model: str
+            The type of decomposition to perform. Options are 'additive' or 'multiplicative'
+        period: int
+            The period of the seasonal component
+
+    Outputs:
+        seasonal: xarray.DataArray
+            The seasonal component of the decomposition
+        trend: xarray.DataArray
+            The trend component of the decomposition
+        residual: xarray.DataArray
+            The residual component of the decomposition
+    """
+    seasonal = data.copy()
+    trend = data.copy()
+    residual = data.copy()
+    for lat in data.latitude.values:
+        for lon in data.longitude.values:
+            grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].to_series()
+            # Check if the time series contains NaN values
+            if np.any(np.isnan(grid_point_time_series.values)):
+                seasonal.loc[dict(latitude=lat, longitude=lon)] = np.nan
+                trend.loc[dict(latitude=lat, longitude=lon)] = np.nan
+                residual.loc[dict(latitude=lat, longitude=lon)] = np.nan
+            else:
+                decomposition = STL(grid_point_time_series).fit()
+                seasonal.loc[dict(latitude=lat, longitude=lon)] = decomposition.seasonal
+                trend.loc[dict(latitude=lat, longitude=lon)] = decomposition.trend
+                residual.loc[dict(latitude=lat, longitude=lon)] = decomposition.resid
+    return seasonal, trend, residual
+
+def perform_clustering_noTS(var, level, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output):
+    """
+    Perform clustering of the specified atmospheric variable.
+
+    Inputs:
+        var: str
+            The acronym of the variable to cluster as saved in the .nc files
+        level: str
+            The pressure level of the variable to cluster, if surface level, set to 'sfc'
+        basin: str
+            The basin considered for the clustering
+        n_clusters: int
+            The number of clusters to create
+        norm: bool
+            If True, normalize the data
+        train_yearI: int
+            The initial year for training
+        train_yearF: int
+            The final year for training
+        resolution: str
+            The resolution of the data
+        path_predictor: str
+            The path to the .nc files containing the data
+        path_output: str
+            The path to the output directory where to save the clustering results
+    Outputs:
+        centroids: list
+            The indices of the nodes closest to the cluster centers
+        centroids_dataframe: pd.DataFrame
+            The dataframe containing the timeseries of the centroids
+        clusters_av_dataframe: pd.DataFrame
+            The dataframe containing the average timeseries of each cluster
+        labels_dataframe: pd.DataFrame
+            The dataframe containing the cluster labels of each node
+    """
+    ## Load the variable data to cluster ## 
+    # Define geographical coordinates according to the basin considered
+    if basin == 'NWP':
+        min_lon, max_lon, min_lat, max_lat = 100, 180, 0, 40
+    elif basin == 'NEP':
+        min_lon, max_lon, min_lat, max_lat = -180, -75, 0, 40
+    elif basin == 'NA':
+        min_lon, max_lon, min_lat, max_lat = -100, 0, 0, 40
+    elif basin == 'NI':
+        min_lon, max_lon, min_lat, max_lat = 45, 100, 0, 40
+    elif basin == 'SP':
+        min_lon, max_lon, min_lat, max_lat = 135, -70, -40, 0
+    elif basin == 'SI':
+        min_lon, max_lon, min_lat, max_lat = 35, 135, -40, 0
+    elif basin == 'GLB':
+        min_lon, max_lon, min_lat, max_lat = -181, 181, -40, 40
+    else:
+        raise ValueError('Basin not recognized')
+    
+    # Data extraction from .nc files
+    for y, year in enumerate(range(1970, 2023)):
+        path = path_predictor + f'_{resolution}_{year}.nc'
+        if y == 0:
+            total_data = xr.open_dataset(path)[var]
+        else:
+            total_data = xr.concat([total_data, xr.open_dataset(path)[var]], dim='time')
+    # If variable is defined on pressure levels, select the level specified in the inputs
+    if (level != 'sfc') and (len(level) < 5):
+        level = int(level)
+        total_data = total_data.sel(level=level)
+        var_name = total_data.long_name + ' at ' + str(level) + ' hPa'
+        var = var + str(level)
+    # If variable is defined between the difference of two pressure levels, select the difference level specified in the inputs
+    elif (level != 'sfc') and (len(level) > 4):
+        total_data = total_data.sel(diff_level=level)
+        var_name = total_data.long_name + ' between ' + level.split('-')[1] + ' and ' + level.split('-')[0] + ' hPa'
+        var = var + level
+    else:
+        var_name = total_data.long_name
+    # Convert the data of some variables to the desired units
+    if var == 'sst': # Convert from K to C
+        total_data = total_data - 273.15
+    elif var == 'msl': # Convert from Pa to hPa
+        total_data = total_data / 100
+    # Get the anomalies of the variable (group by month because we are working with monthly data)
+    climatology = total_data.groupby('time.month').mean('time') 
+    anomaly = (total_data.groupby('time.month') - climatology).drop('month')
+    # Filtered data based on the geographical limits
+    if basin != 'GLB':
+        total_data = crop_field(total_data, min_lon, max_lon, min_lat, max_lat)
+        anomaly = crop_field(anomaly, min_lon, max_lon, min_lat, max_lat)
+    # Detrend and deseasonalize the data 
+    seasonal, trend, residual = deseason_detrend_3Darray(total_data)
+
+    ## Perform the cluster only on the train years ##
+    # Get the train data and the anomalies train data for the variable
+    train_data = residual.sel(time=slice(str(train_yearI)+'-01-01', str(train_yearF)+'-12-31'))
+    # Reshape the data -> (time, lat, lon) -> (lat*lon, time)
+    data = train_data.values
+    data_res = data.reshape(data.shape[0], data.shape[1]*data.shape[2]).T
+
+    # Mask the data if is a variable defined over the ocean
+    ocean_vars = ['sst', 'ssta20', 'ssta30', 'mpi']
+    if var in ocean_vars:
+        ocean_mask = ~np.any(np.isnan(data_res), axis=1)
+    else:
+        ocean_mask = None
+    ## MASKING ONLY FOR OCEAN VARIABLES, NEED TO CHECK IF NECESSARY FOR OTHER VARIABLES, OR WHEN WORKING BASIN WISE ##
+    mask = ocean_mask
+    if mask is None:
+        data_res_masked = data_res
+    else:
+        data_res_masked = data_res[mask]
+
+    # Normalize each time series
+    if norm==True:
+        data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
+        anomaly_res_masked = normalize(anomaly_res_masked, axis=1, copy=True, return_norm=False)
+
+    # Perform the clustering
+    cluster = cluster_model(data_res_masked, n_clusters, var)
+    cluster.check_data()
+    cluster.kmeans()
+    # Get the closest node to the cluster center
+    centroids = cluster_model.get_closest2center2(cluster, data_res_masked)
+
+    # Plot the clusters
+    latitudes = train_data.latitude.values
+    longitudes = train_data.longitude.values
+    clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name)
+
+    # Save the clusters figures in the output directory
+    output_figs_dir = os.path.join(path_output, f'figures')
+    os.makedirs(output_figs_dir, exist_ok=True)
+    fig_name = os.path.join(output_figs_dir, f'{var}.pdf')
+    clusters_fig.savefig(fig_name, bbox_inches='tight', format='pdf', dpi=300)
+    plt.close(clusters_fig)
+
+    # Get the data for the centroids 
+    iter = itertools.product(latitudes, longitudes)
+    nodes_list = list(iter)
+    if mask is None:
+        nodes_list = np.array(nodes_list)
+    else:
+        nodes_list = np.array(nodes_list)[mask]
+
+    lons_c = [np.array(nodes_list)[centroids][i][1] for i in range(len(np.array(nodes_list)[centroids]))]
+    lats_c = [np.array(nodes_list)[centroids][i][0] for i in range(len(np.array(nodes_list)[centroids]))]
+
+    # Create a dataframe with the centroids timeseries
+    centroids_data = []
+    for i in range(len(centroids)):
+        centroid_data = residual.sel(latitude=lats_c[i], longitude=lons_c[i]).values
+        centroids_data.append(centroid_data)
+    centroids_dataframe = pd.DataFrame(centroids_data).T
+    centroids_dataframe.index = residual.time.values
+    centroids_dataframe.columns = [var + '_cluster' + str(i) for i in range(1, n_clusters+1)]
+
+    # Get average data for each cluster, weighted averages are calculated. Batch size is adjusted to avoid memory errors
+    clusters_av_dataframe = pd.DataFrame(columns=[var + '_cluster' + str(i) for i in range(1, n_clusters+1)])
+    weights = np.cos(np.deg2rad(nodes_list[:,0]))
+    data_cluster_avg = residual.values
+    for c in range(len(centroids)):
+        cluster_mask = cluster.labels == c
+        batch_size = 100
+        if mask is None:
+            data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
+        else:
+            data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
+        weights_masked = weights[cluster_mask]
+        # calculate the area-weighted average 
+        weights_masked = weights_masked / np.sum(weights_masked)
+        cluster_avg = np.sum(data_cluster_avg_masked * weights_masked[:, np.newaxis], axis=0)
+        clusters_av_dataframe[var + '_cluster' + str(c+1)] = cluster_avg
+
+    clusters_av_dataframe.index = residual.time.values
 
     # Create a dataframe with the cluster labels
     labels_dataframe = pd.DataFrame(cluster.labels, columns=['cluster'])
