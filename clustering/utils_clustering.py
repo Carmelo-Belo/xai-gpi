@@ -81,11 +81,15 @@ class cluster_model:
         fig = plt.figure(figsize=(30, 6))
         if basin == 'NA':
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
+        elif basin == 'SP':
+            ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree(central_longitude=180))
         else:
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
 
         # Set the extent of the map
-        ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
         ax.coastlines(resolution='110m', linewidth=2)
         ax.add_feature(cfeature.BORDERS, linestyle=':')
 
@@ -161,27 +165,6 @@ def crop_field(var, lon1, lon2, lat1, lat2):
         if lon1 < 0:
             lon1 = lon1 + 360
     return ds.sel(longitude=slice(lon1, lon2), latitude=slice(lat2, lat1))
-
-# Functions to compute the weighted average of the data in the clusters
-def weighted_average(data, weights):
-    weighted_sum = np.dot(weights, data)
-    total_weight = np.sum(weights)
-    return weighted_sum / total_weight
-
-def calculate_weighted_average(data, weights, batch_size):
-    num_rows = data.shape[0]
-    result = np.zeros((data.shape[1],))
-    
-    for i in range(0, num_rows, batch_size):
-        if i + batch_size > num_rows:
-            batch_data = data[i:]
-            batch_weights = weights[i:]
-        else:
-            batch_data = data[i:i+batch_size]
-            batch_weights = weights[i:i+batch_size]
-        result += weighted_average(batch_data, batch_weights)
-        
-    return result / (num_rows/batch_size)
 
 def seasasonal_decomposition_3Darray(data, model='additive', period=12):
     """
@@ -417,7 +400,9 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         else:
             data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[mask][cluster_mask]
         weights_masked = weights[cluster_mask]
-        cluster_avg = calculate_weighted_average(data_cluster_avg_masked, weights_masked, batch_size)
+        # calculate the area-weighted average 
+        weights_masked = weights_masked / np.sum(weights_masked)
+        cluster_avg = np.sum(data_cluster_avg_masked * weights_masked[:, np.newaxis], axis=0)
         clusters_av_dataframe[var + '_cluster' + str(c+1)] = cluster_avg
 
     clusters_av_dataframe.index = total_data.time.values
