@@ -64,9 +64,9 @@ def main(basin, n_clusters, anomaly_clustering, res, train_yearI, train_yearF, r
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Clustering of variables')
-    parser.add_argument('--basin', type=str, default='GLB', help='Basin')
-    parser.add_argument('--n_clusters', type=int, default=8, help='Number of clusters')
-    parser.add_argument('--anomaly_clustering', type=str, default='y', help='If y perform anomaly clustering')
+    parser.add_argument('--basin', type=str, help='Basin')
+    parser.add_argument('--n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('--anomaly_clustering', type=str, default='n', help='If y perform anomaly clustering')
     parser.add_argument('--res', type=float, default=2.5, help='Resolution')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
