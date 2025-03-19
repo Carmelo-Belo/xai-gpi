@@ -72,7 +72,6 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     trend_file = 'target_trend_1980-2022_2.5x2.5.csv'
 
     # Retrieve the clusters type of data from the results folder
-    nc_string = results_folder.split('_')[2]
     cluster_data = f'{basin}_{n_clusters}clusters_noTS'
 
     # Set the paths to the files
@@ -91,18 +90,24 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     os.makedirs(results_figure_dir, exist_ok=True)
 
     # Load the predictors and the target in a DataFrame
+    years = np.arange(start_year, end_year+1, 1)
     predictors_df = pd.read_csv(predictors_path, index_col=0)
     predictors_df.index = pd.to_datetime(predictors_df.index)
+    predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
+    target_df = target_df.loc[target_df.index.year.isin(years)]
     target_season_df = pd.read_csv(os.path.join(data_dir, seasonal_file), index_col=0)
     target_season_df.index = pd.to_datetime(target_season_df.index)
+    target_season_df = target_season_df.loc[target_season_df.index.year.isin(years)]
     target_trend_df = pd.read_csv(os.path.join(data_dir, trend_file), index_col=0)
     target_trend_df.index = pd.to_datetime(target_trend_df.index)
+    target_trend_df = target_trend_df.loc[target_trend_df.index.year.isin(years)]
 
     # Load the gpis time series dataframe and select the target GPIs for physical information to pass to the network
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
+    gpis_df = gpis_df.loc[gpis_df.index.year.isin(years)]
     gpi_pi = gpis_df['ogpi']
 
     # Load the labels files and plot the clusters for each atmospheric variable
@@ -133,14 +138,11 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
 
     # Compute correlations between the candidate variabels and the target variable
-    years = np.arange(start_year, end_year+1, 1)
-    filtered_target_df = target_df.loc[target_df.index.year.isin(years)]
-    series1 = filtered_target_df['tcg'].to_numpy()
-    filtered_predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
+    series1 = target_df['resid'].to_numpy()
     correlations_lag0 = []
     correlations_lag1 = []
     for v, var in enumerate(predictors_df.columns):
-        series2 = filtered_predictors_df.loc[:, var].to_numpy()
+        series2 = predictors_df.loc[:, var].to_numpy()
         corr0, _ = pearsonr(series1, series2)
         correlations_lag0.append(corr0)
         corr1, _ = pearsonr(series1[1:], series2[:-1])
@@ -259,7 +261,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         history = mlpreg.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
         # Evaluate the model
         Y_pred_fold = mlpreg.predict(X_test, verbose=0)
-        Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['resid'])
         Y_pred_mlp = pd.concat([Y_pred_mlp, Y_pred_fold])
         loss = mlpreg.evaluate(X_test, Y_test_fold, verbose=0)
 
@@ -274,7 +276,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         history_noFS = mlpreg_noFS.fit(train_data, validation_data=val_data, epochs=epo, callbacks=[callback], verbose=0)
         # Evaluate the model
         Y_pred_fold_noFS = mlpreg_noFS.predict(X_test_noFS, verbose=0)
-        Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['resid'])
         Y_pred_mlp_noFS = pd.concat([Y_pred_mlp_noFS, Y_pred_fold_noFS])
         loss_noFS = mlpreg_noFS.evaluate(X_test_noFS, Y_test_fold, verbose=0)
 
@@ -296,7 +298,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_names=['train', 'val'], eval_metric='l2')
         # Predictions on the test set
         Y_pred_fold_lgbm = lgbm.predict(X_test)
-        Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['resid'])
         Y_pred_lgbm = pd.concat([Y_pred_lgbm, Y_pred_fold_lgbm])
         # Evaluate the model for the optimized dataset
         loss_lgbm = mean_squared_error(Y_test_fold, Y_pred_fold_lgbm)
@@ -307,7 +309,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         lgbm_noFS.fit(X_t_noFS, Y_t, eval_set=[(X_t_noFS, Y_t), (X_v_noFS, Y_v)], eval_names=['train', 'val'], eval_metric='l2')
         # Predictions on the test set
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
-        Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['resid'])
         Y_pred_lgbm_noFS = pd.concat([Y_pred_lgbm_noFS, Y_pred_fold_lgbm_noFS])
         # Evaluate the model for the entire dataset
         loss_lgbm_noFS = mean_squared_error(Y_test_fold, Y_pred_fold_lgbm_noFS)
@@ -332,7 +334,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         lgbm.fit(X_t, Y_t, eval_set=[(X_t, Y_t), (X_v, Y_v)], eval_names=['train', 'val'], eval_metric=lgbm_custom_eval)
         # Predictions on the test set
         Y_pred_fold_lgbm = lgbm.predict(X_test)
-        Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold_lgbm = pd.DataFrame(Y_pred_fold_lgbm, index=Y_test_fold.index, columns=['resid'])
         Y_pred_pi_lgbm = pd.concat([Y_pred_pi_lgbm, Y_pred_fold_lgbm])
         # Evaluate the model for the optimized dataset
         loss_lgbm = lgbm_pi_eval(Y_test_fold, Y_pred_fold_lgbm, gpi_pi_test)[1]
@@ -343,7 +345,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         lgbm_noFS.fit(X_t_noFS, Y_t, eval_set=[(X_t_noFS, Y_t), (X_v_noFS, Y_v)], eval_names=['train', 'val'], eval_metric=lgbm_custom_eval)
         # Predictions on the test set
         Y_pred_fold_lgbm_noFS = lgbm_noFS.predict(X_test_noFS)
-        Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['tcg'])
+        Y_pred_fold_lgbm_noFS = pd.DataFrame(Y_pred_fold_lgbm_noFS, index=Y_test_fold.index, columns=['resid'])
         Y_pred_pi_lgbm_noFS = pd.concat([Y_pred_pi_lgbm_noFS, Y_pred_fold_lgbm_noFS])
         # Evaluate the model for the entire dataset
         loss_lgbm_noFS = lgbm_pi_eval(Y_test_fold, Y_pred_fold_lgbm_noFS, gpi_pi_test)[1]
@@ -599,13 +601,13 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     # observations
     plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
     # mlp predictions
-    plt.plot(Y_pred_mlp_annual.index.year, Y_pred_mlp_annual['tcg'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['tcg'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_mlp_annual.index.year, Y_pred_mlp_annual['resid'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['resid'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
     # lgbm predictions
-    plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['tcg'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_lgbm_noFS_annual.index.year, Y_pred_lgbm_noFS_annual['tcg'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['tcg'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['tcg'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['resid'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_annual.index.year, Y_pred_lgbm_noFS_annual['resid'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['resid'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['resid'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     # genesis potential indeces
     plt.plot(engpi_annual.index.year, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
     plt.plot(ogpi_annual.index.year, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
