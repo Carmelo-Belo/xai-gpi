@@ -96,7 +96,7 @@ def main(basin, n_clusters, n_vars, n_idxs, output_folder, model_kind, train_yea
             test_dataset = dataset_opt[test_indices]
             
             # Standardize data
-            Y_column = 'tcg' 
+            Y_column = 'resid' 
             X_train=train_dataset[train_dataset.columns.drop([Y_column]) ]
             Y_train=train_dataset[Y_column]
             X_test=test_dataset[test_dataset.columns.drop([Y_column]) ]
