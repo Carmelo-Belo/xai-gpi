@@ -375,7 +375,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
                            'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_pi-lgbm', 'R_pi-lgbm_noFS', # Pearson Correlation Coefficient
                            'R_mlp_TS', 'R_mlp_noFS_TS', 'R_lgbm_TS', 'R_lgbm_noFS_TS', 'R_pi-lgbm_TS', 'R_pi-lgbm_noFS_TS', # Pearson Correlation Coefficient with Trend and Seasonality
                            'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 'R_S_pi-lgbm', 'R_S_pi-lgbm_noFS', # Seasonal Pearson Correlation Coefficient
-                           'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_pi-lgbm', 'R_Y_pi-lgbm_noFS' # Yearly Pearson Correlation Coefficient
+                           'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_pi-lgbm', 'R_Y_pi-lgbm_noFS', # Yearly Pearson Correlation Coefficient
                            'R_Y_mlp_TS', 'R_Y_mlp_noFS_TS', 'R_Y_lgbm_TS', 'R_Y_lgbm_noFS_TS', 'R_Y_pi-lgbm_TS', 'R_Y_pi-lgbm_noFS_TS'] # Yearly Pearson Correlation Coefficient with Trend and Seasonality
     if os.path.exists(performance_df_file):
         performance_df = pd.read_csv(performance_df_file, index_col=0)
@@ -656,7 +656,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         'R2_mlp_TS': r2_mlp_TS, 'R2_mlp_noFS_TS': r2_mlp_noFS_TS, 'R2_lgbm_TS': r2_lgbm_TS, 'R2_lgbm_noFS_TS': r2_lgbm_noFS_TS, 'R2_pi-lgbm_TS': r2_pi_lgbm_TS, 'R2_pi-lgbm_noFS_TS': r2_pi_lgbm_noFS_TS,
         'R2_S_mlp': r2_S_mlp, 'R2_S_mlp_noFS': r2_S_mlp_noFS, 'R2_S_lgbm': r2_S_lgbm, 'R2_S_lgbm_noFS': r2_S_lgbm_noFS, 'R2_S_pi-lgbm': r2_S_pi_lgbm, 'R2_S_pi-lgbm_noFS': r2_S_pi_lgbm_noFS,
         'R2_Y_mlp': r2_Y_mlp, 'R2_Y_mlp_noFS': r2_Y_mlp_noFS, 'R2_Y_lgbm': r2_Y_lgbm, 'R2_Y_lgbm_noFS': r2_Y_lgbm_noFS, 'R2_Y_pi-lgbm': r2_Y_pi_lgbm, 'R2_Y_pi-lgbm_noFS': r2_Y_pi_lgbm_noFS,
-        'R2_Y_mlp_TS': r2_Y_mlp_TS, 'R2_Y_mlp_noFS_TS': r2_Y_mlp_noFS_TS, 'R2_Y_lgbm_TS': r2_Y_lgbm_TS, 'R2_Y_lgbm_noFS_TS': r2_Y_lgbm_noFS_TS, 'R2_Y_pi-lgbm_TS': r2_pi_lgbm_TS, 'R2_Y_pi-lgbm_noFS_TS': r2_pi_lgbm_noFS_TS,
+        'R2_Y_mlp_TS': r2_Y_mlp_TS, 'R2_Y_mlp_noFS_TS': r2_Y_mlp_noFS_TS, 'R2_Y_lgbm_TS': r2_Y_lgbm_TS, 'R2_Y_lgbm_noFS_TS': r2_Y_lgbm_noFS_TS, 'R2_Y_pi-lgbm_TS': r2_Y_pi_lgbm_TS, 'R2_Y_pi-lgbm_noFS_TS': r2_Y_pi_lgbm_noFS_TS,
         # Pearson Correlation Coefficient
         'R_mlp': r_mlp, 'R_mlp_noFS': r_mlp_noFS, 'R_lgbm': r_lgbm, 'R_lgbm_noFS': r_lgbm_noFS, 'R_pi-lgbm': r_pi_lgbm, 'R_pi-lgbm_noFS': r_pi_lgbm_noFS,
         'R_mlp_TS': r_mlp_TS, 'R_mlp_noFS_TS': r_mlp_noFS_TS, 'R_lgbm_TS': r_lgbm_TS, 'R_lgbm_noFS_TS': r_lgbm_noFS_TS, 'R_pi-lgbm_TS': r_pi_lgbm_TS, 'R_pi-lgbm_noFS_TS': r_pi_lgbm_noFS_TS,
