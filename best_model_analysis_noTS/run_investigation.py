@@ -149,7 +149,7 @@ def main(basin, run_name):
         lr = 0.001 # Learning rate
         l2_reg = 0.001
         batch_size = 32
-        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+        callback = callbacks.EarlyStopping(monitor='val_loss', patience=25, restore_best_weights=True)
         ## MLPregressor with Selected Features ##
         # Build and compile the multi layer perceptron model for the optimized dataset
         n_predictors = len(X_train.columns)
