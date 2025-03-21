@@ -460,3 +460,90 @@ def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_n
     fig_ts.set_tight_layout(True)
     plt.show()
     return fig_ts
+
+def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_cluster, selected_features):
+    # Set list of the variables of which there are possible clusters
+    cluster_variables = ['abs_vo850', 'mpi', 'msl', 'r700', 'sst', 'vo850', 'vws850-200', 'w']
+    # Set figure charateristics depending on the basin
+    if basin == 'NWP':
+        west, east, south, north = 100, 180, 0, 40
+        fig_size=(13,15)
+    elif basin == 'NEP':
+        west, east, south, north = -180, -75, 0, 40
+        fig_size=(15,15)
+    elif basin == 'NA':
+        west, east, south, north = -100, 0, 0, 40
+        fig_size=(15,15)
+    elif basin == 'NI':
+        west, east, south, north = 45, 100, 0, 40
+        fig_size=(9,15)
+    elif basin == 'SP':
+        west, east, south, north = 110, -45, -40, 0
+        fig_size=(20,15)
+    elif basin == 'SI':
+        west, east, south, north = 35, 135, -40, 0
+        fig_size=(15,15)
+    # Set figure size and grid
+    fig_basin = plt.figure(figsize=fig_size)
+    gs_basin = gridspec.GridSpec(5, 2, figure=fig_basin, height_ratios=[1, 1, 1, 1, 0.05])
+    # Define a color map with fixed colors for each cluster and map the clusters to the colors index
+    unique_clusters = np.arange(1, n_clusters+1)
+    cmap = plt.get_cmap('tab20', n_clusters)
+    colors = cmap(np.linspace(0, 1, n_clusters))
+    full_cmap = mcolors.ListedColormap(colors)
+    norm = mcolors.BoundaryNorm(np.arange(n_clusters + 1) - 0.5, n_clusters)
+    cluster_to_color_index = {cluster: i for i, cluster in enumerate(unique_clusters)}
+    # Cycle through the different variables and plot the clusters
+    for v, var in enumerate(cluster_variables):
+        # Set the figure and gridlines of the map
+        if basin == 'NA':
+            ax = fig_basin.add_subplot(gs_basin[v], projection=ccrs.PlateCarree())
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
+        elif basin == 'SP':
+            ax = fig_basin.add_subplot(gs_basin[v], projection=ccrs.PlateCarree(central_longitude=180))
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree(central_longitude=180))
+        else:
+            ax = fig_basin.add_subplot(gs_basin[v], projection=ccrs.PlateCarree(central_longitude=180))
+            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
+        ax.coastlines(resolution='110m', linewidth=2)
+        ax.add_feature(cfeature.BORDERS, linestyle=':')
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=2, color='gray', alpha=0.5, linestyle='--')
+        gl.top_labels = False
+        gl.right_labels = False
+        gl.xformatter = LongitudeFormatter()
+        gl.yformatter = LatitudeFormatter()
+        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 20))
+        gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 10))
+        gl.xlabel_style = {'size': 16} 
+        gl.ylabel_style = {'size': 16}
+        # If the variable is in the selected features, plot the corrsponding clusters
+        if var in variable_names_cluster:
+            # Load the labels file
+            label_file = f'labels_{var}.csv'
+            label_df = pd.read_csv(os.path.join(cluster_data_dir, label_file), index_col=0)
+            # Determine the clusters and corresponding lags selected for the variable
+            clusters_selected = np.asarray([int(long_name.split('_cluster')[1].split('_lag')[0]) 
+                                            for long_name in selected_features if long_name.split('_cluster')[0] == var])
+            # Plot the clusters for the selected variable and lag only if there are clusters selected
+            if len(clusters_selected) > 0:
+                # Select the rows of the label file that correspond to the selected clusters
+                label_df_selected = label_df[label_df['cluster'].isin(clusters_selected)]
+                # Plot only the selected clusters using their index in the full color map
+                scatter = ax.scatter(
+                    label_df_selected['nodes_lon'].values, 
+                    label_df_selected['nodes_lat'].values,
+                    c=[cluster_to_color_index[cluster] for cluster in label_df_selected['cluster']],
+                    cmap=full_cmap, norm=norm, s=125, transform=ccrs.PlateCarree()
+                )
+        ax.set_title(f'{var}', fontsize=30)         
+    # Create a colorbar showing all clusters
+    ax_cbar = fig_basin.add_subplot(gs_basin[8:])
+    cbar = plt.colorbar(mappable=scatter, cax=ax_cbar, orientation='horizontal', ticks=np.arange(n_clusters))
+    cbar.set_ticklabels(unique_clusters)
+    cbar.ax.tick_params(labelsize=20)
+    cbar.set_label('Clusters', fontsize=24)
+    # Finalize the figure
+    fig_basin.set_tight_layout(True)
+    plt.show()
+    
+    return fig_basin
