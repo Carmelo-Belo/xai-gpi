@@ -407,4 +407,56 @@ def runs_info(basin, run_name):
         expl_mlp_noFS = shap.Explanation(values=npz_mpl_noFS["shap_values"], base_values=npz_mpl_noFS["base_values"], data=npz_mpl_noFS["data"], feature_names=npz_mpl_noFS["feature_names"])
         shap_values_mlp_noFS.append(expl_mlp_noFS)
 
-    return dataset_opt, dataset_opt_noFS, Y_pred, Y_pred_noFS, X_test_eval, X_test_eval_noFS, mlps, mlps_noFS, perm_importance_mlp, perm_importance_mlp_noFS, shap_values_mlp, shap_values_mlp_noFS
+    return Y_pred, Y_pred_noFS, X_test_eval, X_test_eval_noFS, mlps, mlps_noFS, perm_importance_mlp, perm_importance_mlp_noFS, shap_values_mlp, shap_values_mlp_noFS
+
+def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi):
+    fig_annual = plt.figure(figsize=(16, 8))
+    axY = fig_annual.add_subplot(111)
+    # observations
+    axY.plot(obs.index, obs, label='Observed (IBTrACS)', color='green', linewidth=3)
+    # mlp predictions
+    axY.plot(pred.index, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=3)
+    axY.plot(pred_noFS.index, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=3)
+    # gpis
+    axY.plot(engpi.index, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=3, linestyle='--')
+    axY.plot(ogpi.index, ogpi, label=f'oGPI - R:{r_ogpi:.3f}', color='purple', linewidth=3, linestyle='--')
+    # set figure parameters
+    axY.grid(True, which='both', linestyle='--', linewidth=0.5)
+    axY.set_xticks(obs.index[::2])
+    axY.set_xticklabels(obs.index[::2], rotation=45, fontsize=14, ha='right')
+    axY.set_yticks(axY.get_yticks())
+    axY.set_yticklabels(axY.get_yticks(), fontsize=14)
+    axY.set_xlabel('Years', fontsize=16)
+    axY.set_ylabel('# of TCs per year', fontsize=16)
+    axY.legend(fontsize=14, loc='upper center')
+    # Finalize the figure
+    fig_annual.set_tight_layout(True)
+    plt.show()
+    return fig_annual
+
+def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi):
+    fig_ts = plt.figure(figsize=(60, 16))
+    ## Monthly time series ##
+    ax = fig_ts.add_subplot(111)
+    xticks = pd.Series(obs.index).dt.strftime('%m-%Y').to_numpy()
+    # observations
+    ax.plot(xticks, obs, label='Observed (IBTrACS)', color='green', linewidth=4)
+    # predictions
+    ax.plot(xticks, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=4)
+    ax.plot(xticks, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=4)
+    # gpis
+    ax.plot(xticks, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=4, linestyle='--')
+    ax.plot(xticks, ogpi, label=f'oGPI - R:{r_ogpi:.3f}', color='purple', linewidth=4, linestyle='--')
+    # set figure parameters
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.set_xticks(ticks=np.arange(len(xticks))[::6])
+    ax.set_xticklabels(xticks[::6], rotation=45, fontsize=26, ha='right')
+    ax.set_yticks(ax.get_yticks())
+    ax.set_yticklabels(ax.get_yticks(), fontsize=26)
+    ax.set_xlabel('Months', fontsize=36)
+    ax.set_ylabel('# of TCs', fontsize=36)
+    ax.legend(fontsize=36, loc='upper left')
+    # Finalize the figure
+    fig_ts.set_tight_layout(True)
+    plt.show()
+    return fig_ts
