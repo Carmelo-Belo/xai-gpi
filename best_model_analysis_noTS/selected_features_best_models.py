@@ -179,8 +179,12 @@ def main():
             os.makedirs(perc_fig_dir, exist_ok=True)
             figs, cluster_vars = plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list)
             for i, fig in enumerate(figs):
+                # Save the figure in both pdf and png formats
                 fig_path = os.path.join(perc_fig_dir, f'{cluster_vars[i]}.pdf')
                 fig.savefig(fig_path, format='pdf', dpi=300, bbox_inches='tight')
+                plt.close()
+                fig_path = os.path.join(perc_fig_dir, f'{cluster_vars[i]}.png')
+                fig.savefig(fig_path, format='png', dpi=300, bbox_inches='tight')
                 plt.close()
 
 if __name__ == '__main__':
