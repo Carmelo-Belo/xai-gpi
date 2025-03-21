@@ -17,12 +17,12 @@ def main():
     os.makedirs(fig_dir, exist_ok=True)
     # Set lists of basins, model kinds, cluster types, and number of clusters
     basin_dict = {
-        'NEP': ('North East Pacific', 'linreg', 9), 
-        'NWP': ('North West Pacific', 'linreg', 8), 
-        'NA': ('North Atlantic', 'linreg', 12), 
-        'NI': ('North Indian', 'linreg', 9), 
+        # 'NEP': ('North East Pacific', 'linreg', 9), 
+        # 'NWP': ('North West Pacific', 'linreg', 8), 
+        # 'NA': ('North Atlantic', 'linreg', 12), 
+        # 'NI': ('North Indian', 'linreg', 9), 
         'SI': ('South Indian', 'linreg', 10), 
-        'SP': ('South Pacific', 'linreg', 11)
+        # 'SP': ('South Pacific', 'linreg', 11)
         }
     FINAL_MODEL = 'mlp'
     # Loop over basins
@@ -58,8 +58,8 @@ def main():
         # Get the percentage of selection
         df_tier_sel_perc_fsmodels = (df_tier_sel_perc_fsmodels / 5) * 100
         # Set the figure for the heatmap percentage of selection
-        plt.figure(figsize=(3*n_clusters, 10))
-        ax = sns.heatmap(df_tier_sel_perc_fsmodels, cmap="Blues", linewidths=0.5, linecolor="gray", square=True,
+        fig = plt.figure(figsize=(3*n_clusters, 10))
+        ax = sns.heatmap(df_tier_sel_perc_fsmodels, cmap="Blues", linewidths=0.5, linecolor="gray", square=True, figure=fig,
                         cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
         cbar = ax.collections[0].colorbar
         cbar.ax.tick_params(labelsize=14)
@@ -95,7 +95,7 @@ def main():
         plt.close()
 
         # Load the performance file for the basin and filter to get the simulation with the best performance
-        track_file = os.path.join(results_dir, f'sim_performance_{basin}_noTS_extra.csv')
+        track_file = os.path.join(results_dir, f'sim_performance_extra_{basin}_noTS.csv')
         track_df_extra = pd.read_csv(track_file, index_col=0)
         track_df_extra = track_df_extra[track_df_extra['model'] == 'linreg']
         track_df_extra = track_df_extra[track_df_extra['n_clusters'] == n_clusters]
