@@ -11,6 +11,10 @@ import matplotlib.gridspec as gridspec
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
+from keras.models import load_model
+from sklearn.model_selection import KFold
+from sklearn import preprocessing
+import shap
 
 def final_models_violins(metric, results_dir, basins, basin_names):
     # Create a figure for the violin plots
@@ -253,3 +257,154 @@ def plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list):
         figures.append(fig)
 
     return figures, cluster_variables
+
+# Function that from the basin name and simualtion folder name returns several data to be used in the feature importance analysis
+# + sensitivity analysis on the percentage of the selected features in the best models
+def runs_info(basin, run_name):
+    # Set some additional variables and parameters that generally stay constant
+    years = np.arange(1980, 2022, 1) # from 1980 to 2021 included
+    n_folds = 3
+    n_clusters = int(run_name.split('nc')[1].split('_')[0])
+    model_kind = run_name.split('_')[1]
+    # Set directories and files names
+    project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
+    target_file = 'target_1980-2022_2.5x2.5.csv'
+    # Retrieve the clusters type of data from the results folder
+    cluster_data = f'{basin}_{n_clusters}clusters_noTS'
+    # Set the paths to the files
+    fs_dir = os.path.join(project_dir, 'FS_TCG')
+    output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+    cluster_data_dir = os.path.join(fs_dir, 'data', cluster_data)
+    final_analysis_dir = os.path.join(output_dir, 'final_analysis')
+    # predictors
+    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_9idxs.csv'
+    predictor_file = 'predictors_' + experiment_filename
+    predictors_df = pd.read_csv(os.path.join(cluster_data_dir, predictor_file), index_col=0)
+    predictors_df.index = pd.to_datetime(predictors_df.index)
+    predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
+    # target
+    target_file = 'target_residual_1980-2022_2.5x2.5.csv'
+    target_df = pd.read_csv(os.path.join(cluster_data_dir, target_file), index_col=0)
+    target_df.index = pd.to_datetime(target_df.index)
+    target_df = target_df.loc[target_df.index.year.isin(years)]
+    # Create dataset according to solution and list the labels of the selected variables
+    if "test" in run_name:
+        sol_filename = f'{model_kind}_' + experiment_filename
+        best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
+        # Load the solutions file in a DataFrame and the best solution found
+        best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
+        best_solution = best_solution.to_numpy().flatten()
+        # Select the variables from the best solutions
+        column_names = predictors_df.columns.tolist()
+        final_sequence = best_solution[len(column_names):2*len(column_names)]
+        sequence_length = best_solution[:len(column_names)]
+        feat_sel = best_solution[2*len(column_names):]
+        variable_selection = feat_sel.astype(int)
+        time_sequences = sequence_length.astype(int)
+        time_lags = final_sequence.astype(int)
+        dataset_opt = target_df.copy()
+        for c, col in enumerate(predictors_df.columns):
+            if variable_selection[c] == 0 or time_sequences[c] == 0:
+                continue
+            for j in range(time_sequences[c]):
+                dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
+    else:
+        # features selected >= sel_perc% of the time in the top20% best models
+        sel_feat_perc_path = os.path.join(fs_dir, 'results', f'selected_features_best_models_{basin}_{n_clusters}_noTS.csv')
+        df_sel_feat_perc = pd.read_csv(sel_feat_perc_path, index_col=0)
+        sel_perc = run_name.split('_')[0].split('selfeat')[1]
+        selected_features = df_sel_feat_perc[sel_perc].dropna().to_list()
+        dataset_opt = predictors_df[selected_features]
+        dataset_opt.columns = [f'{feat}_lag0' for feat in dataset_opt.columns]
+        dataset_opt = dataset_opt.assign(resid=target_df['resid'])
+    # Compone the dataset to train the model using all predictors possible
+    dataset_opt_noFS = target_df.copy()
+    for l in range(1):
+        for var in predictors_df.columns:
+            col_df = pd.DataFrame(predictors_df[var].shift(l).values, index=dataset_opt_noFS.index, columns=[f'{var}_lag{l}'])
+            dataset_opt_noFS = pd.concat([dataset_opt_noFS, col_df], axis=1)
+
+    ## Make predictions with the best solution found ##
+    # Cross-Validation for train and test years
+    kfold = KFold(n_splits=n_folds)
+    Y_column = 'resid' # Target variable
+    Y_pred = []
+    Y_pred_noFS = []
+    X_test_eval = []
+    X_test_eval_noFS = []
+    mlps = []
+    mlps_noFS = []
+    # List to store the results of feature permutation importance and SHAP values
+    perm_importance_mlp = []
+    perm_importance_mlp_noFS = []
+    shap_values_mlp = []
+    shap_values_mlp_noFS = []
+    # Loop through the folds
+    for n_fold, (train_index, test_index) in enumerate(kfold.split(years)):
+        # Set the indices for the training and test datasets
+        train_years = years[train_index]
+        test_years = years[test_index]
+        # Split the optimized dataset
+        train_indices = dataset_opt.index.year.isin(train_years)
+        test_indices = dataset_opt.index.year.isin(test_years)
+        train_dataset = dataset_opt[train_indices]
+        test_dataset = dataset_opt[test_indices]
+        # Split the entire dataset 
+        train_indices_noFS = dataset_opt_noFS.index.year.isin(train_years)
+        test_indices_noFS = dataset_opt_noFS.index.year.isin(test_years)
+        train_dataset_noFS = dataset_opt_noFS[train_indices_noFS]
+        test_dataset_noFS = dataset_opt_noFS[test_indices_noFS]
+
+        # Standardize the optimized dataset
+        X_train = train_dataset[train_dataset.columns.drop([Y_column])]
+        X_test_fold = test_dataset[test_dataset.columns.drop([Y_column])]
+        Y_test_fold = test_dataset[Y_column]
+        scaler = preprocessing.MinMaxScaler()
+        X_std_train = scaler.fit(X_train)
+        X_std_train = scaler.transform(X_train)
+        X_std_test = scaler.transform(X_test_fold)
+        X_train = pd.DataFrame(X_std_train, columns=X_train.columns, index=X_train.index)
+        X_test = pd.DataFrame(X_std_test, columns=X_test_fold.columns, index=X_test_fold.index)
+        # Append X_test to a list to use it later for SHAP explainability
+        feature_names = ['{}'.format(col.split('_l')[0]) for col in np.array(X_test.columns)]
+        xt = X_test
+        xt.columns = feature_names
+        X_test_eval.append(xt)
+        # Standardize the entire dataset
+        X_train_noFS = train_dataset_noFS[train_dataset_noFS.columns.drop([Y_column])]
+        X_test_fold_noFS = test_dataset_noFS[test_dataset_noFS.columns.drop([Y_column])]
+        scaler_noFS = preprocessing.MinMaxScaler()
+        X_std_train_noFS = scaler_noFS.fit(X_train_noFS)
+        X_std_train_noFS = scaler_noFS.transform(X_train_noFS)
+        X_std_test_noFS = scaler_noFS.transform(X_test_fold_noFS)
+        X_train_noFS = pd.DataFrame(X_std_train_noFS, columns=X_train_noFS.columns, index=X_train_noFS.index)
+        X_test_noFS = pd.DataFrame(X_std_test_noFS, columns=X_test_fold_noFS.columns, index=X_test_fold_noFS.index)
+        # Append X_test_noFS to a list to use it later for SHAP explainability
+        feature_names_noFS = ['{}'.format(col.split('_l')[0]) for col in np.array(X_test_noFS.columns)]
+        xt_noFS = X_test_noFS
+        xt_noFS.columns = feature_names_noFS
+        X_test_eval_noFS.append(xt_noFS)
+        # Load the models
+        mlp = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_fold{n_fold+1}.keras'))
+        mlp_noFS = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_noFS_fold{n_fold+1}.keras'))
+        mlps.append(mlp)
+        mlps_noFS.append(mlp_noFS)
+        # Append the predictions to a list
+        Y_pred_fold = mlp.predict(X_test, verbose=0)
+        Y_pred_fold = pd.DataFrame(Y_pred_fold, index=Y_test_fold.index, columns=['resid'])
+        Y_pred.append(Y_pred_fold)
+        Y_pred_fold_noFS = mlp_noFS.predict(X_test_noFS, verbose=0)
+        Y_pred_fold_noFS = pd.DataFrame(Y_pred_fold_noFS, index=Y_test_fold.index, columns=['resid'])
+        Y_pred_noFS.append(Y_pred_fold_noFS)
+        # Load the permutation importance results
+        perm_importance_mlp.append(np.load(os.path.join(final_analysis_dir, 'explain_data', f'perm_imp_mlp_fold{n_fold+1}.npz')))
+        perm_importance_mlp_noFS.append(np.load(os.path.join(final_analysis_dir, 'explain_data', f'perm_imp_mlp_noFS_fold{n_fold+1}.npz')))
+        # Load the SHAP values
+        npz_mpl = np.load(os.path.join(final_analysis_dir, 'explain_data', f'shap_mlp_fold{n_fold+1}.npz'), allow_pickle=True)
+        expl_mlp = shap.Explanation(values=npz_mpl["shap_values"], base_values=npz_mpl["base_values"], data=npz_mpl["data"], feature_names=npz_mpl["feature_names"])
+        shap_values_mlp.append(expl_mlp)
+        npz_mpl_noFS = np.load(os.path.join(final_analysis_dir, 'explain_data', f'shap_mlp_noFS_fold{n_fold+1}.npz'), allow_pickle=True)
+        expl_mlp_noFS = shap.Explanation(values=npz_mpl_noFS["shap_values"], base_values=npz_mpl_noFS["base_values"], data=npz_mpl_noFS["data"], feature_names=npz_mpl_noFS["feature_names"])
+        shap_values_mlp_noFS.append(expl_mlp_noFS)
+
+    return dataset_opt, dataset_opt_noFS, Y_pred, Y_pred_noFS, X_test_eval, X_test_eval_noFS, mlps, mlps_noFS, perm_importance_mlp, perm_importance_mlp_noFS, shap_values_mlp, shap_values_mlp_noFS
