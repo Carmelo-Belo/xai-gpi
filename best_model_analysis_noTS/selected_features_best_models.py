@@ -17,12 +17,12 @@ def main():
     os.makedirs(fig_dir, exist_ok=True)
     # Set lists of basins, model kinds, cluster types, and number of clusters
     basin_dict = {
-        # 'NEP': ('North East Pacific', 'linreg', 9), 
-        # 'NWP': ('North West Pacific', 'linreg', 8), 
-        # 'NA': ('North Atlantic', 'linreg', 12), 
-        # 'NI': ('North Indian', 'linreg', 9), 
+        'NEP': ('North East Pacific', 'linreg', 9), 
+        'NWP': ('North West Pacific', 'linreg', 8), 
+        'NA': ('North Atlantic', 'linreg', 12), 
+        'NI': ('North Indian', 'linreg', 9), 
         'SI': ('South Indian', 'linreg', 10), 
-        # 'SP': ('South Pacific', 'linreg', 11)
+        'SP': ('South Pacific', 'linreg', 11)
         }
     FINAL_MODEL = 'mlp'
     # Loop over basins
