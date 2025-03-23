@@ -547,3 +547,94 @@ def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_
     plt.show()
     
     return fig_basin
+
+def plot_shap_values(shap_values_mlp):
+    # Get the ordered features from the shap values of the first fold
+    abs_shap_values_fold1 = np.abs(shap_values_mlp[0].values)
+    max_abs_per_col = np.max(abs_shap_values_fold1, axis=0)
+    sorted_col_indices = np.argsort(max_abs_per_col)
+    ordered_features = [shap_values_mlp[0].feature_names[i] for i in sorted_col_indices]
+    num_features = len(ordered_features)
+    # Get figure charateristics based on the number of features to plot
+    fig_xdim = min(max(2 * num_features, 14), 24) 
+    fig_ydim = min(max(0.8 * num_features, 6), 20)
+    marker_size = max(20 - 0.4 * num_features, 5) 
+    base_font_size = 14
+    font_size = max(min(base_font_size + (num_features * 0.2), 20), 10)
+    fonts_size = [font_size - 2, font_size, font_size + 2]
+    # Set the x axis ticks
+    mins = []
+    maxs = []
+    for sp, shap_values in enumerate(shap_values_mlp):
+        min_shap = np.min(shap_values.values)
+        max_shap = np.max(shap_values.values)
+        mins.append(min_shap)
+        maxs.append(max_shap)
+    minimum = min(mins)
+    maximum = max(maxs)
+    min_round = np.round(minimum, 1)
+    max_round = np.round(maximum, 1)
+    if min_round > minimum:
+        min_round = min_round - 0.1
+    if max_round < maximum:
+        max_round = max_round + 0.1
+    x_axis = np.round(np.arange(min_round, max_round, 0.1), 1)
+    # Set the figure and the grid for the subplots
+    fig = plt.figure(figsize=(fig_xdim, fig_ydim))
+    gs = gridspec.GridSpec(2, 4, figure=fig)
+    ax_pos = [0, 2, 5]
+    jitter_strength = 0.12
+
+    # Cycle over the shap values of the 3 folds
+    for nf, shape_values in enumerate(shap_values_mlp):
+        feat_names = np.array(shape_values.feature_names)
+        # Set the colorbar for the subplots
+        data_values = shape_values.data
+        vmin = data_values.min()
+        vmax = data_values.max()
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        cmap = plt.get_cmap('bwr')
+        # Create the subplot
+        ax = fig.add_subplot(gs[ax_pos[nf]:ax_pos[nf]+2])
+        # Plot the SHAP values
+        for n_feat, feature in enumerate(ordered_features):
+            # Get the position of the feature in the SHAP values
+            feat_pos = np.where(feature == feat_names)[0][0]
+            # Get the data for the scatter plot
+            x_data = shape_values.values[:, feat_pos]
+            spread = np.random.normal(0, jitter_strength, size=x_data.shape)
+            y_data = np.zeros_like(x_data) + n_feat + spread
+            color_data = data_values[:, feat_pos]
+            # Plot the scatter plot
+            ax.scatter(x_data, y_data, c=color_data, cmap=cmap, norm=norm, s=marker_size)
+        # Add a colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, fraction=0.05, pad=0.01)
+        cbar.ax.set_aspect(50) # adjust the aspect ratio to thin colorbar
+        cbar.set_ticks([vmin, vmax]) # set the ticks
+        cbar.set_ticklabels(['Low', 'High'], fontsize=fonts_size[1]) # set the tick labels
+        cbar.outline.set_visible(False) # remove the colorbar outline
+        cbar.set_label('Feature Value', labelpad=-30, fontsize=fonts_size[1])
+        # Set yticks
+        ax.set_yticks(np.arange(len(ordered_features)))
+        ax.set_yticklabels(ordered_features, fontdict={'fontsize': fonts_size[1]})
+        # Set xticks
+        ax.set_xticks(x_axis)
+        ax.set_xticklabels(x_axis, fontdict={'fontsize': fonts_size[0]})
+        ax.set_xlabel('SHAP values (impact on model output)', fontdict={'fontsize': fonts_size[1]})
+        # Add a vertical line at 0
+        ax.axvline(x=0, color='black', linestyle='--', zorder=0)
+        # Add horizontal lines at each feature
+        for n_feat in range(len(ordered_features)):
+            ax.axhline(y=n_feat, color='grey', linestyle=':', linewidth=0.5, zorder=0)
+        # Set the title
+        ax.set_title(f'Fold {nf+1}', fontsize=fonts_size[2])
+        # Remove axis outline
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+    # Adjust the layout
+    fig.set_tight_layout(True)
+    plt.show()
+    return fig
