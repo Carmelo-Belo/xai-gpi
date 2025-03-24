@@ -7,6 +7,7 @@ from itertools import zip_longest
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
+import matplotlib.lines as mlines
 import matplotlib.gridspec as gridspec
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
@@ -558,7 +559,7 @@ def plot_shap_values(shap_values_mlp):
     # Get figure charateristics based on the number of features to plot
     fig_xdim = min(max(2 * num_features, 14), 24) 
     fig_ydim = min(max(0.8 * num_features, 6), 20)
-    marker_size = max(20 - 0.4 * num_features, 5) 
+    marker_size = max(20 - 0.1 * num_features, 5) 
     base_font_size = 14
     font_size = max(min(base_font_size + (num_features * 0.2), 20), 10)
     fonts_size = [font_size - 2, font_size, font_size + 2]
@@ -578,7 +579,7 @@ def plot_shap_values(shap_values_mlp):
         min_round = min_round - 0.1
     if max_round < maximum:
         max_round = max_round + 0.1
-    x_axis = np.round(np.arange(min_round, max_round, 0.1), 1)
+    x_axis = np.round(np.arange(min_round, max_round+0.1, 0.1), 1)
     # Set the figure and the grid for the subplots
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(2, 4, figure=fig)
@@ -634,6 +635,144 @@ def plot_shap_values(shap_values_mlp):
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_visible(False)
+    # Adjust the layout
+    fig.set_tight_layout(True)
+    plt.show()
+    return fig
+
+def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_years_df):
+    # Get the ordered features from the shap values of the first fold
+    abs_shap_values_fold1 = np.abs(shap_values_mlp[0].values)
+    max_abs_per_col = np.max(abs_shap_values_fold1, axis=0)
+    sorted_col_indices = np.argsort(max_abs_per_col)
+    ordered_features = [shap_values_mlp[0].feature_names[i] for i in sorted_col_indices]
+    num_features = len(ordered_features)
+    # Get figure charateristics based on the number of features to plot
+    fig_xdim = min(max(2 * num_features, 14), 24) 
+    fig_ydim = min(max(1.25*num_features, 6), 20)
+    marker_size = max(120 - 0.1 * num_features, 30)
+    marker_size_legend = max(16 - 0.1 * num_features, 5)
+    base_font_size = 16
+    font_size = max(min(base_font_size + (num_features * 0.2), 20), 10)
+    fonts_size = [font_size - 2, font_size, font_size + 2]
+    # Set the x axis ticks
+    mins = []
+    maxs = []
+    for sp, shap_values in enumerate(shap_values_mlp):
+        min_shap = np.min(shap_values.values)
+        max_shap = np.max(shap_values.values)
+        mins.append(min_shap)
+        maxs.append(max_shap)
+    minimum = min(mins)
+    maximum = max(maxs)
+    min_round = np.round(minimum, 1)
+    max_round = np.round(maximum, 1)
+    if min_round > minimum:
+        min_round = min_round - 0.1
+    if max_round < maximum:
+        max_round = max_round + 0.1
+    x_axis = np.round(np.arange(min_round, max_round+0.1, 0.1), 1)
+    # Set the figure and the gridspec for the subplots -> vertical layout
+    fig = plt.figure(figsize=(fig_xdim, fig_ydim))
+    gs = gridspec.GridSpec(1, 1, figure=fig)
+    ax = fig.add_subplot(gs[0])
+    vmins = []
+    vmaxs = []
+    for yb, years_for_analysis in enumerate(basin_years_couple):
+        # Indentify the fold of the years considered
+        fold = test_years_df.loc[years_for_analysis[0], 'fold']
+        shap_values_fold = shap_values_mlp[fold]
+        Y_pred_fold = Y_pred[fold]
+        # Set the colorbar for this subplot
+        shap_years = []
+        for yy, year in enumerate(years_for_analysis):
+            indices = Y_pred_fold.index.year == year
+            shap_year = shap_values_fold[indices]
+            shap_years.append(shap_year)
+        data_values = np.array([shap_year.data for shap_year in shap_years])
+        vmin = data_values.min()
+        vmax = data_values.max()
+        vmins.append(vmin)
+        vmaxs.append(vmax)
+    vmin = min(vmins)
+    vmax = max(vmaxs)
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = plt.get_cmap('bwr')
+    # List for legend handles
+    legend_handles = []
+    # Set the different markers 
+    markers = ['o', 's', 'D']
+    for yb, years_for_analysis in enumerate(basin_years_couple):
+        # Indentify the fold of the years considered
+        fold = test_years_df.loc[years_for_analysis[0], 'fold']
+        shap_values_fold = shap_values_mlp[fold]
+        Y_pred_fold = Y_pred[fold]
+        # Loop over the two years to plot the SHAP values
+        for yy, year in enumerate(years_for_analysis):
+            indices = Y_pred_fold.index.year == year
+            shap_year = shap_values_fold[indices]
+            # Get the feature names and the data values
+            feat_names = np.array(shap_year.feature_names)
+            data_values = shap_year.data
+            # Set a positions, markers and labels for the scatter plot
+            yb_pos = 0.40*(2-yb) if yy == 0 else -0.40*yb
+            yy_pos = 0.25 if yy == 0 else -0.25
+            year_kind = 'max' if yy == 0 else 'min'
+            # Make the scatter plot cycling over the predefined ordered features
+            shape = markers[yb]
+            for n_feat, feature in enumerate(ordered_features):
+                # Get the position of the feature in the SHAP values
+                feat_pos = np.where(feature == feat_names)[0][0]
+                # Get the data for the scatter plot
+                x_data = shap_year.values[:, feat_pos]
+                y_data = np.zeros_like(x_data) + n_feat*3 + yy_pos + yb_pos
+                color_data = data_values[:, feat_pos]
+                # Plot the scatter plot
+                if yy == 0:
+                    ax.scatter(x_data, y_data, c=color_data, marker=shape, cmap=cmap, norm=norm, edgecolors='k', s=marker_size)
+                else:
+                    ax.scatter(x_data, y_data, c=color_data, marker=shape, cmap=cmap, norm=norm, s=marker_size)
+            # Add a legend handle for the year
+            if yy == 0:
+                legend_handle = mlines.Line2D([], [], color='grey', marker=shape, linestyle='None', 
+                                            markeredgecolor='k', markersize=marker_size_legend, label=f'{year} ({year_kind} fold {fold+1})')
+            else:
+                legend_handle = mlines.Line2D([], [], color='grey', marker=shape, linestyle='None', 
+                                            markersize=marker_size_legend, label=f'{year} ({year_kind} fold {fold+1})')
+            legend_handles.append(legend_handle)
+    # Add legend - reorganized
+    legend_handles = np.asarray(legend_handles)
+    new_legend_handles = legend_handles.copy()
+    new_legend_handles[3] = legend_handles[1]
+    new_legend_handles[1] = legend_handles[2]
+    new_legend_handles[4] = legend_handles[3]
+    new_legend_handles[2] = legend_handles[4]
+    ax.legend(handles=new_legend_handles.tolist(), loc='center right', fontsize=fonts_size[2])
+    # Add colorbar
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, fraction=0.04, pad=0.01)
+    cbar.ax.set_aspect(50) # adjust the aspect ratio to thin colorbar
+    cbar.set_ticks([vmin, vmax]) # set the ticks
+    cbar.set_ticklabels(['Low', 'High'], fontsize=fonts_size[1]) # set the tick labels
+    cbar.outline.set_visible(False) # remove the colorbar outline
+    cbar.set_label('Feature Value', fontsize=fonts_size[1], labelpad=-25)
+    # Set yticks
+    ax.set_yticks(np.arange(len(ordered_features)*3)[::3])
+    ax.set_yticklabels(ordered_features, fontdict={'fontsize': fonts_size[1]})
+    # Set xticks
+    ax.set_xticks(x_axis)
+    ax.set_xticklabels(x_axis, fontdict={'fontsize': fonts_size[0]})
+    ax.set_xlabel('SHAP values (impact on model output)', fontsize=fonts_size[1])
+    # Add a vertical line at 0
+    ax.axvline(x=0, color='black', linestyle='--', zorder=0)
+    # Add horizontal lines at each feature
+    for n_feat in np.arange(len(ordered_features)*3)[::3]:
+        ax.axhline(y=n_feat, color='grey', linestyle=':', linewidth=0.5, zorder=0)
+    # Remove axis outline
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     # Adjust the layout
     fig.set_tight_layout(True)
     plt.show()
