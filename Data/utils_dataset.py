@@ -207,6 +207,6 @@ def build_dataset_noTS(basin, cluster_variables, index_variables, cluster_path, 
     decomposition = STL(target['tcg']).fit()
     trend = decomposition.trend.to_frame()
     seasonal = decomposition.seasonal.to_frame()
-    residual = decomposition.resid.to_frame().rename(columns={0: 'tcg'})
+    residual = decomposition.resid.to_frame()
 
     return dataset, residual, trend, seasonal
