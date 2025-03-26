@@ -599,18 +599,18 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     # figure for trajectories without trend and seasonality
     plt.figure(figsize=(16, 8))
     # observations
-    plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
+    plt.plot(Y_test_annual.index, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
     # mlp predictions
-    plt.plot(Y_pred_mlp_annual.index.year, Y_pred_mlp_annual['resid'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['resid'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_mlp_annual.index, Y_pred_mlp_annual['resid'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_annual.index, Y_pred_mlp_noFS_annual['resid'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
     # lgbm predictions
-    plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['resid'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_lgbm_noFS_annual.index.year, Y_pred_lgbm_noFS_annual['resid'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['resid'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['resid'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_lgbm_annual.index, Y_pred_lgbm_annual['resid'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_annual.index, Y_pred_lgbm_noFS_annual['resid'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_annual.index, Y_pred_pi_lgbm_annual['resid'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_annual.index, Y_pred_pi_lgbm_noFS_annual['resid'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     # genesis potential indeces
-    plt.plot(engpi_annual.index.year, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
-    plt.plot(ogpi_annual.index.year, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
+    plt.plot(engpi_annual.index, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
+    plt.plot(ogpi_annual.index, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('Detrended and Deseasonalized # of TCs per year')
@@ -620,18 +620,18 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     # figure for trajectories with trend and seasonality
     plt.figure(figsize=(16, 8))
     # observations
-    plt.plot(Y_test_annual_TS.index.year, Y_test_annual_TS, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
+    plt.plot(Y_test_annual_TS.index, Y_test_annual_TS, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
     # mlp predictions
-    plt.plot(Y_pred_mlp_annual_TS.index.year, Y_pred_mlp_annual_TS, label=f'FS mlp - R:{rY_mlp_TS:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_mlp_noFS_annual_TS.index.year, Y_pred_mlp_noFS_annual_TS, label=f'NoFS mlp - R:{rY_mlp_noFS_TS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_mlp_annual_TS.index, Y_pred_mlp_annual_TS, label=f'FS mlp - R:{rY_mlp_TS:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_annual_TS.index, Y_pred_mlp_noFS_annual_TS, label=f'NoFS mlp - R:{rY_mlp_noFS_TS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
     # lgbm predictions
-    plt.plot(Y_pred_lgbm_annual_TS.index.year, Y_pred_lgbm_annual_TS, label=f'FS lgbm - R:{rY_lgbm_TS:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_lgbm_noFS_annual_TS.index.year, Y_pred_lgbm_noFS_annual_TS, label=f'NoFS lgbm - R:{rY_lgbm_noFS_TS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_annual_TS.index.year, Y_pred_pi_lgbm_annual_TS, label=f'FS pi-lgbm - R:{rY_pi_lgbm_TS:.3f}', color='#1e2e26', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_noFS_annual_TS.index.year, Y_pred_pi_lgbm_noFS_annual_TS, label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS_TS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_lgbm_annual_TS.index, Y_pred_lgbm_annual_TS, label=f'FS lgbm - R:{rY_lgbm_TS:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_annual_TS.index, Y_pred_lgbm_noFS_annual_TS, label=f'NoFS lgbm - R:{rY_lgbm_noFS_TS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_annual_TS.index, Y_pred_pi_lgbm_annual_TS, label=f'FS pi-lgbm - R:{rY_pi_lgbm_TS:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_annual_TS.index, Y_pred_pi_lgbm_noFS_annual_TS, label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS_TS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     # genesis potential indeces
-    plt.plot(engpi_annual_TS.index.year, engpi_annual_TS, label=f'ENGPI - R:{rY_engpi_TS:.3f}', color='#d627bc', linewidth=2)
-    plt.plot(ogpi_annual_TS.index.year, ogpi_annual_TS, label=f'oGPI- R:{rY_ogpi_TS:.3f}', color='#d627bc', linestyle='--', linewidth=2)
+    plt.plot(engpi_annual_TS.index, engpi_annual_TS, label=f'ENGPI - R:{rY_engpi_TS:.3f}', color='#d627bc', linewidth=2)
+    plt.plot(ogpi_annual_TS.index, ogpi_annual_TS, label=f'oGPI- R:{rY_ogpi_TS:.3f}', color='#d627bc', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('# of TCs per year')
@@ -645,7 +645,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         'model': model_kind,
         'n_clusters': n_clusters,
         'n_features': len(X_train.columns),
-        # Root Mean Squared Error
+        # Mean Squared Error
         'MSE_mlp': mse_mlp, 'MSE_mlp_noFS': mse_mlp_noFS, 'MSE_lgbm': mse_lgbm, 'MSE_lgbm_noFS': mse_lgbm_noFS, 'MSE_pi-lgbm': mse_pi_lgbm, 'MSE_pi-lgbm_noFS': mse_pi_lgbm_noFS,
         'MSE_mlp_TS': mse_mlp_TS, 'MSE_mlp_noFS_TS': mse_mlp_noFS_TS, 'MSE_lgbm_TS': mse_lgbm_TS, 'MSE_lgbm_noFS_TS': mse_lgbm_noFS_TS, 'MSE_pi-lgbm_TS': mse_pi_lgbm_TS, 'MSE_pi-lgbm_noFS_TS': mse_pi_lgbm_noFS_TS,
         'MSE_S_mlp': mse_S_mlp, 'MSE_S_mlp_noFS': mse_S_mlp_noFS, 'MSE_S_lgbm': mse_S_lgbm, 'MSE_S_lgbm_noFS': mse_S_lgbm_noFS, 'MSE_S_pi-lgbm': mse_S_pi_lgbm, 'MSE_S_pi-lgbm_noFS': mse_S_pi_lgbm_noFS,
