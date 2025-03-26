@@ -117,11 +117,11 @@ def build_dataset(basin, cluster_variables, index_variables, cluster_path, index
 
     # If deseasonalize is True, remove the seasonal cycle from the data and return also the seasonal component, otherwise return the dataset and target
     if deseasonalize:
-        decomposition = seasonal_decompose(target['tcg'], model='additive')
+        decomposition = STL(target['tcg']).fit()
         deseason_target = target['tcg'] - decomposition.seasonal
-        target = deseason_target.to_frame().rename(columns={0: 'tcg'})
+        deseason_target = deseason_target.to_frame().rename(columns={0: 'tcg'})
         seasonal = decomposition.seasonal.to_frame()
-        return dataset, target, seasonal
+        return dataset, target, deseason_target, seasonal
     else:
         return dataset, target
     
