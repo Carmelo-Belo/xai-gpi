@@ -166,7 +166,7 @@ def crop_field(var, lon1, lon2, lat1, lat2):
             lon1 = lon1 + 360
     return ds.sel(longitude=slice(lon1, lon2), latitude=slice(lat2, lat1))
 
-def seasasonal_decomposition_3Darray(data, model='additive', period=12):
+def deseason_detrend_3Darray(data):
     """
     Decompose a 3D xarray.DataArray into its seasonal, trend, and residual components. The decompiosition is performed along the time dimension.
 
@@ -191,14 +191,14 @@ def seasasonal_decomposition_3Darray(data, model='additive', period=12):
     residual = data.copy()
     for lat in data.latitude.values:
         for lon in data.longitude.values:
-            grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].values
+            grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].to_series()
             # Check if the time series contains NaN values
-            if np.any(np.isnan(grid_point_time_series)):
+            if np.any(np.isnan(grid_point_time_series.values)):
                 seasonal.loc[dict(latitude=lat, longitude=lon)] = np.nan
                 trend.loc[dict(latitude=lat, longitude=lon)] = np.nan
                 residual.loc[dict(latitude=lat, longitude=lon)] = np.nan
             else:
-                decomposition = seasonal_decompose(grid_point_time_series, model=model, period=period)
+                decomposition = STL(grid_point_time_series).fit()
                 seasonal.loc[dict(latitude=lat, longitude=lon)] = decomposition.seasonal
                 trend.loc[dict(latitude=lat, longitude=lon)] = decomposition.trend
                 residual.loc[dict(latitude=lat, longitude=lon)] = decomposition.resid
@@ -302,7 +302,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         anomaly = crop_field(anomaly, min_lon, max_lon, min_lat, max_lat)
     # deseasonalize the data if the deseasonalize flag is True
     if deseasonalize == True:
-        seasonal, trend, residual = seasasonal_decomposition_3Darray(total_data)
+        seasonal, trend, residual = deseason_detrend_3Darray(total_data)
         total_data = total_data - seasonal
     ## IF WE WANT TO WORK ONLY ON CYCLONE SEASON WHEN BASIN WISE WE NEED TO ADJUST IT HERE ##
 
@@ -414,44 +414,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     labels_dataframe['cluster'] = labels_dataframe['cluster'] + 1
 
     return centroids, centroids_dataframe, clusters_av_dataframe, labels_dataframe
-
-def deseason_detrend_3Darray(data):
-    """
-    Decompose a 3D xarray.DataArray into its seasonal, trend, and residual components. The decompiosition is performed along the time dimension.
-
-    Inputs:
-        data: xarray.DataArray
-            The data to decompose
-        model: str
-            The type of decomposition to perform. Options are 'additive' or 'multiplicative'
-        period: int
-            The period of the seasonal component
-
-    Outputs:
-        seasonal: xarray.DataArray
-            The seasonal component of the decomposition
-        trend: xarray.DataArray
-            The trend component of the decomposition
-        residual: xarray.DataArray
-            The residual component of the decomposition
-    """
-    seasonal = data.copy()
-    trend = data.copy()
-    residual = data.copy()
-    for lat in data.latitude.values:
-        for lon in data.longitude.values:
-            grid_point_time_series = data.loc[dict(latitude=lat, longitude=lon)].to_series()
-            # Check if the time series contains NaN values
-            if np.any(np.isnan(grid_point_time_series.values)):
-                seasonal.loc[dict(latitude=lat, longitude=lon)] = np.nan
-                trend.loc[dict(latitude=lat, longitude=lon)] = np.nan
-                residual.loc[dict(latitude=lat, longitude=lon)] = np.nan
-            else:
-                decomposition = STL(grid_point_time_series).fit()
-                seasonal.loc[dict(latitude=lat, longitude=lon)] = decomposition.seasonal
-                trend.loc[dict(latitude=lat, longitude=lon)] = decomposition.trend
-                residual.loc[dict(latitude=lat, longitude=lon)] = decomposition.resid
-    return seasonal, trend, residual
 
 def perform_clustering_noTS(var, level, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output):
     """
