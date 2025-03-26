@@ -49,7 +49,7 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
     solution_filename = 'CRO_' + model_kind + '_' + experiment_filename # this file stores the last solution found by the algorithm
 
     # Create an empty file to store the solutions provided by the algorithm
-    sol_data = pd.DataFrame(columns=['Metric', 'CV', 'RY', 'Test', 'Sol'])
+    sol_data = pd.DataFrame(columns=['CV', 'Test', 'Sol'])
     sol_data.to_csv(indiv_path, sep=' ', header=sol_data.columns, index=None)
 
     # Split the dataset into train and test

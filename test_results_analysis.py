@@ -10,7 +10,7 @@ from keras.optimizers.legacy import Adam
 from lightgbm import LGBMRegressor
 from sklearn.model_selection import train_test_split, KFold
 from sklearn import preprocessing
-from sklearn.metrics import mean_squared_error, mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score
 from scipy.stats import pearsonr
 import utils_results as ut
 
@@ -62,7 +62,7 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
     eval_metric = mse_pred + mse_gpi
     return 'pi-mse_eval', eval_metric, False
 
-def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metric, n_folds, start_year, end_year):
+def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds, start_year, end_year):
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -74,7 +74,6 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
         cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
     elif "DS" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
-        target_season = 'target_seasonality_1970-2022_2.5x2.5.csv'
     else:
         cluster_data = f'{basin}_{n_clusters}clusters'
 
@@ -99,9 +98,6 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     predictors_df.index = pd.to_datetime(predictors_df.index)
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
-    if "DS" in nc_string:
-        target_season_df = pd.read_csv(os.path.join(data_dir, target_season), index_col=0)
-        target_season_df.index = pd.to_datetime(target_season_df.index)
 
     # Load the gpis time series dataframe and select the target GPIs for physical information to pass to the network
     gpis_df = pd.read_csv(gpis_path, index_col=0)
@@ -119,14 +115,8 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     best_solution = best_solution.to_numpy().flatten()
 
     # Find the Cross-Validation and Test metric for the best solution found
-    if acc_metric == 'mse':
-        CVbest = sol_file_df['CV'].idxmin() 
-        Testbest = sol_file_df['Test'].idxmin()
-    elif acc_metric == 'rY':
-        CVbest = sol_file_df['CV'].idxmax()
-        Testbest = sol_file_df['Test'].idxmax()
-    else:
-        raise ValueError('The accuracy metric is not valid. Please choose between "mse" or "rY".')
+    CVbest = sol_file_df['CV'].idxmin() 
+    Testbest = sol_file_df['Test'].idxmin()
 
     # Plot the evolution of the different metrics for each solution found per evaluation
     # Cross-Validation metric
@@ -137,10 +127,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     ax.scatter(sol_file_df.index[Testbest], sol_file_df['Test'][Testbest], color='green', label='Test Best')
     ax.legend()
     ax.set_xlabel('Solutions')
-    if acc_metric == 'mse':
-        ax.set_ylabel('Mean Squared Error')
-    elif acc_metric == 'rY':
-        ax.set_ylabel('Pearson Correlation Coefficient')
+    ax.set_ylabel('Mean Squared Error')
     plt.tight_layout()
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
 
@@ -374,20 +361,11 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     # Pearson Correlation Coefficient
     performance_df_file = os.path.join(fs_dir, 'results', f'sim_performance_{basin}.csv')
     performance_columns = ['experiment', 'model', 'n_clusters', 'n_features',
-                           'MAE_mlp', 'MAE_mlp_noFS', 'MAE_lgbm', 'MAE_lgbm_noFS', 'MAE_pi-lgbm', 'MAE_pi-lgbm_noFS', # Mean Absolute Error
-                           'MAE_S_mlp', 'MAE_S_mlp_noFS', 'MAE_S_lgbm', 'MAE_S_lgbm_noFS', 'MAE_S_pi-lgbm', 'MAE_S_pi-lgbm_noFS', # Seasonal Mean Absolute Error
-                           'MAE_Y_mlp', 'MAE_Y_mlp_noFS', 'MAE_Y_lgbm', 'MAE_Y_lgbm_noFS', 'MAE_Y_pi-lgbm', 'MAE_Y_pi-lgbm_noFS', # Yearly Mean Absolute Error
-                           'RMSE_mlp', 'RMSE_mlp_noFS', 'RMSE_lgbm', 'RMSE_lgbm_noFS', 'RMSE_pi-lgbm', 'RMSE_pi-lgbm_noFS', # Root Mean Squared Error
-                           'RMSE_S_mlp', 'RMSE_S_mlp_noFS', 'RMSE_S_lgbm', 'RMSE_S_lgbm_noFS', 'RMSE_S_pi-lgbm', 'RMSE_S_pi-lgbm_noFS', # Seasonal Root Mean Squared Error
-                           'RMSE_Y_mlp', 'RMSE_Y_mlp_noFS', 'RMSE_Y_lgbm', 'RMSE_Y_lgbm_noFS', 'RMSE_Y_pi-lgbm', 'RMSE_Y_pi-lgbm_noFS', # Yearly Root Mean Squared Error
+                           'MSE_mlp', 'MSE_mlp_noFS', 'MSE_lgbm', 'MSE_lgbm_noFS', 'MSE_pi-lgbm', 'MSE_pi-lgbm_noFS', # Mean Squared Error
+                           'MSE_Y_mlp', 'MSE_Y_mlp_noFS', 'MSE_Y_lgbm', 'MSE_Y_lgbm_noFS', 'MSE_Y_pi-lgbm', 'MSE_Y_pi-lgbm_noFS', # Yearly Mean Squared Error
                            'R2_mlp', 'R2_mlp_noFS', 'R2_lgbm', 'R2_lgbm_noFS', 'R2_pi-lgbm', 'R2_pi-lgbm_noFS', # Coefficient of Determination R^2
-                           'R2_S_mlp', 'R2_S_mlp_noFS', 'R2_S_lgbm', 'R2_S_lgbm_noFS', 'R2_S_pi-lgbm', 'R2_S_pi-lgbm_noFS', # Seasonal Coefficient of Determination R^2
                            'R2_Y_mlp', 'R2_Y_mlp_noFS', 'R2_Y_lgbm', 'R2_Y_lgbm_noFS', 'R2_Y_pi-lgbm', 'R2_Y_pi-lgbm_noFS', # Yearly Coefficient of Determination R^2
-                           'R2adj_mlp', 'R2adj_mlp_noFS', 'R2adj_lgbm', 'R2adj_lgbm_noFS', 'R2adj_pi-lgbm', 'R2adj_pi-lgbm_noFS', # Adjusted Coefficient of Determination
-                           'R2adj_S_mlp', 'R2adj_S_mlp_noFS', 'R2adj_S_lgbm', 'R2adj_S_lgbm_noFS', 'R2adj_S_pi-lgbm', 'R2adj_S_pi-lgbm_noFS', # Seasonal Adjusted Coefficient of Determination
-                           'R2adj_Y_mlp', 'R2adj_Y_mlp_noFS', 'R2adj_Y_lgbm', 'R2adj_Y_lgbm_noFS', 'R2adj_Y_pi-lgbm', 'R2adj_Y_pi-lgbm_noFS', # Yearly Adjusted Coefficient of Determination
                            'R_mlp', 'R_mlp_noFS', 'R_lgbm', 'R_lgbm_noFS', 'R_pi-lgbm', 'R_pi-lgbm_noFS', # Pearson Correlation Coefficient
-                           'R_S_mlp', 'R_S_mlp_noFS', 'R_S_lgbm', 'R_S_lgbm_noFS', 'R_S_pi-lgbm', 'R_S_pi-lgbm_noFS', # Seasonal Pearson Correlation Coefficient
                            'R_Y_mlp', 'R_Y_mlp_noFS', 'R_Y_lgbm', 'R_Y_lgbm_noFS', 'R_Y_pi-lgbm', 'R_Y_pi-lgbm_noFS'] # Yearly Pearson Correlation Coefficient
     if os.path.exists(performance_df_file):
         performance_df = pd.read_csv(performance_df_file, index_col=0)
@@ -395,31 +373,14 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
         performance_df = pd.DataFrame(columns=performance_columns)
         performance_df.set_index('experiment', inplace=True)
 
-    # If the models were trained with deseasonalized data, add back the seasonality to the predictions and observations
-    if "DS" in nc_string:
-        Y_test = Y_test + target_season_df.loc[Y_test.index, 'seasonal']
-        Y_pred_mlp['tcg'] = Y_pred_mlp['tcg'] + target_season_df.loc[Y_pred_mlp.index, 'seasonal']
-        Y_pred_mlp_noFS['tcg'] = Y_pred_mlp_noFS['tcg'] + target_season_df.loc[Y_pred_mlp_noFS.index, 'seasonal']
-        Y_pred_lgbm['tcg'] = Y_pred_lgbm['tcg'] + target_season_df.loc[Y_pred_lgbm.index, 'seasonal']
-        Y_pred_lgbm_noFS['tcg'] = Y_pred_lgbm_noFS['tcg'] + target_season_df.loc[Y_pred_lgbm_noFS.index, 'seasonal']
-        Y_pred_pi_lgbm['tcg'] = Y_pred_pi_lgbm['tcg'] + target_season_df.loc[Y_pred_pi_lgbm.index, 'seasonal']
-        Y_pred_pi_lgbm_noFS['tcg'] = Y_pred_pi_lgbm_noFS['tcg'] + target_season_df.loc[Y_pred_pi_lgbm_noFS.index, 'seasonal']
-
     ## Compare observations to predictions ##
-    # mean absolute error
-    mae_mlp = mean_absolute_error(Y_test, Y_pred_mlp['tcg'])
-    mae_mlp_noFS = mean_absolute_error(Y_test, Y_pred_mlp_noFS['tcg'])
-    mae_lgbm = mean_absolute_error(Y_test, Y_pred_lgbm['tcg'])
-    mae_lgbm_noFS = mean_absolute_error(Y_test, Y_pred_lgbm_noFS['tcg'])
-    mae_pi_lgbm = mean_absolute_error(Y_test, Y_pred_pi_lgbm['tcg'])
-    mae_pi_lgbm_noFS = mean_absolute_error(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
-    # root mean squared error
-    rmse_mlp = root_mean_squared_error(Y_test, Y_pred_mlp['tcg'])
-    rmse_mlp_noFS = root_mean_squared_error(Y_test, Y_pred_mlp_noFS['tcg'])
-    rmse_lgbm = root_mean_squared_error(Y_test, Y_pred_lgbm['tcg'])
-    rmse_lgbm_noFS = root_mean_squared_error(Y_test, Y_pred_lgbm_noFS['tcg'])
-    rmse_pi_lgbm = root_mean_squared_error(Y_test, Y_pred_pi_lgbm['tcg'])
-    rmse_pi_lgbm_noFS = root_mean_squared_error(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
+    # mean squared error
+    mse_mlp = mean_squared_error(Y_test, Y_pred_mlp['tcg'])
+    mse_mlp_noFS = mean_squared_error(Y_test, Y_pred_mlp_noFS['tcg'])
+    mse_lgbm = mean_squared_error(Y_test, Y_pred_lgbm['tcg'])
+    mse_lgbm_noFS = mean_squared_error(Y_test, Y_pred_lgbm_noFS['tcg'])
+    mse_pi_lgbm = mean_squared_error(Y_test, Y_pred_pi_lgbm['tcg'])
+    mse_pi_lgbm_noFS = mean_squared_error(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
     # coefficient of determination R^2
     r2_mlp = r2_score(Y_test, Y_pred_mlp['tcg'])
     r2_mlp_noFS = r2_score(Y_test, Y_pred_mlp_noFS['tcg'])
@@ -427,14 +388,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     r2_lgbm_noFS = r2_score(Y_test, Y_pred_lgbm_noFS['tcg'])
     r2_pi_lgbm = r2_score(Y_test, Y_pred_pi_lgbm['tcg'])
     r2_pi_lgbm_noFS = r2_score(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
-    # adjusted coefficient of determination
-    r2adj_mlp = 1 - (1 - r2_mlp) * (len(Y_test) - 1) / (len(Y_test) - n_predictors - 1)
-    r2adj_mlp_noFS = 1 - (1 - r2_mlp_noFS) * (len(Y_test) - 1) / (len(Y_test) - n_predictors_noFS - 1)
-    r2adj_lgbm = 1 - (1 - r2_lgbm) * (len(Y_test) - 1) / (len(Y_test) - n_predictors - 1)
-    r2adj_lgbm_noFS = 1 - (1 - r2_lgbm_noFS) * (len(Y_test) - 1) / (len(Y_test) - n_predictors_noFS - 1)
-    r2adj_pi_lgbm = 1 - (1 - r2_pi_lgbm) * (len(Y_test) - 1) / (len(Y_test) - n_predictors - 1)
-    r2adj_pi_lgbm_noFS = 1 - (1 - r2_pi_lgbm_noFS) * (len(Y_test) - 1) / (len(Y_test) - n_predictors_noFS - 1)
-    # pearson correlation coefficient
+    # pearson correlation coefficient with trend and seasonality
     r_mlp, _ = pearsonr(Y_test, Y_pred_mlp['tcg'])
     r_mlp_noFS, _ = pearsonr(Y_test, Y_pred_mlp_noFS['tcg'])
     r_lgbm, _ = pearsonr(Y_test, Y_pred_lgbm['tcg'])
@@ -461,120 +415,49 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     plt.tight_layout()
     plt.savefig(os.path.join(results_figure_dir, f'monthly_evolution.pdf'), format='pdf', dpi=300)
 
-    ## Compare seasonal accumulated number of TCs ##
-    Y_test_seasonal = Y_test.groupby(Y_test.index.month).mean()
-    Y_pred_mlp_seasonal = Y_pred_mlp.groupby(Y_pred_mlp.index.month).mean()
-    Y_pred_mlp_noFS_seasonal = Y_pred_mlp_noFS.groupby(Y_pred_mlp_noFS.index.month).mean()
-    Y_pred_lgbm_seasonal = Y_pred_lgbm.groupby(Y_pred_lgbm.index.month).mean()
-    Y_pred_lgbm_noFS_seasonal = Y_pred_lgbm_noFS.groupby(Y_pred_lgbm_noFS.index.month).mean()
-    Y_pred_pi_lgbm_seasonal = Y_pred_pi_lgbm.groupby(Y_pred_pi_lgbm.index.month).mean()
-    Y_pred_pi_lgbm_noFS_seasonal = Y_pred_pi_lgbm_noFS.groupby(Y_pred_pi_lgbm_noFS.index.month).mean()
-    # mean absolute error
-    mae_S_mlp = mean_absolute_error(Y_test_seasonal, Y_pred_mlp_seasonal['tcg'])
-    mae_S_mlp_noFS = mean_absolute_error(Y_test_seasonal, Y_pred_mlp_noFS_seasonal['tcg'])
-    mae_S_lgbm = mean_absolute_error(Y_test_seasonal, Y_pred_lgbm_seasonal['tcg'])
-    mae_S_lgbm_noFS = mean_absolute_error(Y_test_seasonal, Y_pred_lgbm_noFS_seasonal['tcg'])
-    mae_S_pi_lgbm = mean_absolute_error(Y_test_seasonal, Y_pred_pi_lgbm_seasonal['tcg'])
-    mae_S_pi_lgbm_noFS = mean_absolute_error(Y_test_seasonal, Y_pred_pi_lgbm_noFS_seasonal['tcg'])
-    # root mean squared error
-    rmse_S_mlp = root_mean_squared_error(Y_test_seasonal, Y_pred_mlp_seasonal['tcg'])
-    rmse_S_mlp_noFS = root_mean_squared_error(Y_test_seasonal, Y_pred_mlp_noFS_seasonal['tcg'])
-    rmse_S_lgbm = root_mean_squared_error(Y_test_seasonal, Y_pred_lgbm_seasonal['tcg'])
-    rmse_S_lgbm_noFS = root_mean_squared_error(Y_test_seasonal, Y_pred_lgbm_noFS_seasonal['tcg'])
-    rmse_S_pi_lgbm = root_mean_squared_error(Y_test_seasonal, Y_pred_pi_lgbm_seasonal['tcg'])
-    rmse_S_pi_lgbm_noFS = root_mean_squared_error(Y_test_seasonal, Y_pred_pi_lgbm_noFS_seasonal['tcg'])
-    # coefficient of determination R^2
-    r2_S_mlp = r2_score(Y_test_seasonal, Y_pred_mlp_seasonal['tcg'])
-    r2_S_mlp_noFS = r2_score(Y_test_seasonal, Y_pred_mlp_noFS_seasonal['tcg'])
-    r2_S_lgbm = r2_score(Y_test_seasonal, Y_pred_lgbm_seasonal['tcg'])
-    r2_S_lgbm_noFS = r2_score(Y_test_seasonal, Y_pred_lgbm_noFS_seasonal['tcg'])
-    r2_S_pi_lgbm = r2_score(Y_test_seasonal, Y_pred_pi_lgbm_seasonal['tcg'])
-    r2_S_pi_lgbm_noFS = r2_score(Y_test_seasonal, Y_pred_pi_lgbm_noFS_seasonal['tcg'])
-    # adjusted coefficient of determination
-    r2adj_S_mlp = 1 - (1 - r2_S_mlp) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors - 1)
-    r2adj_S_mlp_noFS = 1 - (1 - r2_S_mlp_noFS) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors_noFS - 1)
-    r2adj_S_lgbm = 1 - (1 - r2_S_lgbm) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors - 1)
-    r2adj_S_lgbm_noFS = 1 - (1 - r2_S_lgbm_noFS) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors_noFS - 1)
-    r2adj_S_pi_lgbm = 1 - (1 - r2_S_pi_lgbm) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors - 1)
-    r2adj_S_pi_lgbm_noFS = 1 - (1 - r2_S_pi_lgbm_noFS) * (len(Y_test_seasonal) - 1) / (len(Y_test_seasonal) - n_predictors_noFS - 1)
-    # pearson correlation coefficient
-    rS_mlp, _ = pearsonr(Y_test_seasonal, Y_pred_mlp_seasonal['tcg'])
-    rS_mlp_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_mlp_noFS_seasonal['tcg'])
-    rS_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_lgbm_seasonal['tcg'])
-    rS_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_lgbm_noFS_seasonal['tcg'])
-    rS_pi_lgbm, _ = pearsonr(Y_test_seasonal, Y_pred_pi_lgbm_seasonal['tcg'])
-    rS_pi_lgbm_noFS, _ = pearsonr(Y_test_seasonal, Y_pred_pi_lgbm_noFS_seasonal['tcg'])
-    plt.figure(figsize=(10, 6))
-    # observations
-    plt.plot(Y_test_seasonal.index, Y_test_seasonal, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
-    # mlp predictions
-    plt.plot(Y_pred_mlp_seasonal.index, Y_pred_mlp_seasonal['tcg'], label=f'FS mlp - R:{rS_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_mlp_noFS_seasonal.index, Y_pred_mlp_noFS_seasonal['tcg'], label=f'NoFS mlp - R:{rS_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
-    # lgbm predictions
-    plt.plot(Y_pred_lgbm_seasonal.index, Y_pred_lgbm_seasonal['tcg'], label=f'FS lgbm - R:{rS_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_lgbm_noFS_seasonal.index, Y_pred_lgbm_noFS_seasonal['tcg'], label=f'NoFS lgbm - R:{rS_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_seasonal.index, Y_pred_pi_lgbm_seasonal['tcg'], label=f'FS pi-lgbm - R:{rS_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_noFS_seasonal.index, Y_pred_pi_lgbm_noFS_seasonal['tcg'], label=f'NoFS pi-lgbm - R:{rS_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.xlabel('Months')
-    plt.ylabel('# of TCs per month')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(results_figure_dir, f'seasonality.pdf'), format='pdf', dpi=300)
+    ## Compute trend, residual and seasonality for the gpis time series ##
+    gpi_indices = gpis_df.index.year.isin(years)
+    engpi = gpis_df.loc[gpi_indices, 'engpi']
+    ogpi = gpis_df.loc[gpi_indices, 'ogpi']
+    engpi_annual = engpi.groupby(engpi.index.year).sum()
+    ogpi_annual = ogpi.groupby(ogpi.index.year).sum()
 
     ## Compare annual accumulated number of TCs ##
-    Y_test_annual = Y_test.resample('A').sum()
-    Y_pred_mlp_annual = Y_pred_mlp.resample('A').sum()
-    Y_pred_mlp_noFS_annual = Y_pred_mlp_noFS.resample('A').sum()
-    Y_pred_lgbm_annual = Y_pred_lgbm.resample('A').sum()
-    Y_pred_lgbm_noFS_annual = Y_pred_lgbm_noFS.resample('A').sum()
-    Y_pred_pi_lgbm_annual = Y_pred_pi_lgbm.resample('A').sum()
-    Y_pred_pi_lgbm_noFS_annual = Y_pred_pi_lgbm_noFS.resample('A').sum()
-    gpi_indices = gpis_df.index.year.isin(years)
-    engpi_test_annual = gpis_df.loc[gpi_indices, 'engpi'].resample('A').sum()
-    ogpi_test_annual = gpis_df.loc[gpi_indices, 'ogpi'].resample('A').sum()
-    # mean absolute error
-    mae_Y_mlp = mean_absolute_error(Y_test_annual, Y_pred_mlp_annual['tcg'])
-    mae_Y_mlp_noFS = mean_absolute_error(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
-    mae_Y_lgbm = mean_absolute_error(Y_test_annual, Y_pred_lgbm_annual['tcg'])
-    mae_Y_lgbm_noFS = mean_absolute_error(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
-    mae_Y_pi_lgbm = mean_absolute_error(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
-    mae_Y_pi_lgbm_noFS = mean_absolute_error(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    # root mean squared error
-    rmse_Y_mlp = root_mean_squared_error(Y_test_annual, Y_pred_mlp_annual['tcg'])
-    rmse_Y_mlp_noFS = root_mean_squared_error(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
-    rmse_Y_lgbm = root_mean_squared_error(Y_test_annual, Y_pred_lgbm_annual['tcg'])
-    rmse_Y_lgbm_noFS = root_mean_squared_error(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
-    rmse_Y_pi_lgbm = root_mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
-    rmse_Y_pi_lgbm_noFS = root_mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    # coefficient of determination R^2
+    Y_test_annual = Y_test.groupby(Y_test.index.year).sum()
+    Y_pred_mlp_annual = Y_pred_mlp.groupby(Y_pred_mlp.index.year).sum()
+    Y_pred_mlp_noFS_annual = Y_pred_mlp_noFS.groupby(Y_pred_mlp_noFS.index.year).sum()
+    Y_pred_lgbm_annual = Y_pred_lgbm.groupby(Y_pred_lgbm.index.year).sum()
+    Y_pred_lgbm_noFS_annual = Y_pred_lgbm_noFS.groupby(Y_pred_lgbm_noFS.index.year).sum()
+    Y_pred_pi_lgbm_annual = Y_pred_pi_lgbm.groupby(Y_pred_pi_lgbm.index.year).sum()
+    Y_pred_pi_lgbm_noFS_annual = Y_pred_pi_lgbm_noFS.groupby(Y_pred_pi_lgbm_noFS.index.year).sum()
+    # mean squared error without trend and seasonality
+    mse_Y_mlp = mean_squared_error(Y_test_annual, Y_pred_mlp_annual['tcg'])
+    mse_Y_mlp_noFS = mean_squared_error(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
+    mse_Y_lgbm = mean_squared_error(Y_test_annual, Y_pred_lgbm_annual['tcg'])
+    mse_Y_lgbm_noFS = mean_squared_error(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
+    mse_Y_pi_lgbm = mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
+    mse_Y_pi_lgbm_noFS = mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
+    # coefficient of determination R^2 without trend and seasonality
     r2_Y_mlp = r2_score(Y_test_annual, Y_pred_mlp_annual['tcg'])
     r2_Y_mlp_noFS = r2_score(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
     r2_Y_lgbm = r2_score(Y_test_annual, Y_pred_lgbm_annual['tcg'])
     r2_Y_lgbm_noFS = r2_score(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
     r2_Y_pi_lgbm = r2_score(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
     r2_Y_pi_lgbm_noFS = r2_score(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    # adjusted coefficient of determination
-    r2adj_Y_mlp = 1 - (1 - r2_Y_mlp) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors - 1)
-    r2adj_Y_mlp_noFS = 1 - (1 - r2_Y_mlp_noFS) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors_noFS - 1)
-    r2adj_Y_lgbm = 1 - (1 - r2_Y_lgbm) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors - 1)
-    r2adj_Y_lgbm_noFS = 1 - (1 - r2_Y_lgbm_noFS) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors_noFS - 1)
-    r2adj_Y_pi_lgbm = 1 - (1 - r2_Y_pi_lgbm) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors - 1)
-    r2adj_Y_pi_lgbm_noFS = 1 - (1 - r2_Y_pi_lgbm_noFS) * (len(Y_test_annual) - 1) / (len(Y_test_annual) - n_predictors_noFS - 1)
-    # coefficient of correlation
+    # coefficient of correlation without trend and seasonality
     rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_mlp_annual['tcg'])
     rY_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
     rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_lgbm_annual['tcg'])
     rY_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
     rY_pi_lgbm, _ = pearsonr(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
     rY_pi_lgbm_noFS, _ = pearsonr(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    rY_engpi, _ = pearsonr(Y_test_annual, engpi_test_annual)
-    rY_ogpi, _ = pearsonr(Y_test_annual, ogpi_test_annual)
+    rY_engpi, _ = pearsonr(Y_test_annual, engpi_annual)
+    rY_ogpi, _ = pearsonr(Y_test_annual, engpi_annual)
     plt.figure(figsize=(10, 6))
     # observations
-    plt.plot(Y_test_annual.index.year, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
+    plt.plot(Y_test_annual.index, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
     # mlp predictions
-    plt.plot(Y_pred_mlp_annual.index.year, Y_pred_mlp_annual['tcg'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
+    plt.plot(Y_pred_mlp_annual.index, Y_pred_mlp_annual['tcg'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
     plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['tcg'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
     # lgbm predictions
     plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['tcg'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
@@ -582,8 +465,8 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
     plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['tcg'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
     plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['tcg'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     # genesis potential indeces
-    plt.plot(engpi_test_annual.index.year, engpi_test_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
-    plt.plot(ogpi_test_annual.index.year, ogpi_test_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
+    plt.plot(engpi_annual.index.year, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
+    plt.plot(ogpi_annual.index.year, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('# of TCs per year')
@@ -597,26 +480,15 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, acc_metr
         'model': model_kind,
         'n_clusters': n_clusters,
         'n_features': len(X_train.columns),
-        # Mean Absolute Error
-        'MAE_mlp': mae_mlp, 'MAE_mlp_noFS': mae_mlp_noFS, 'MAE_lgbm': mae_lgbm, 'MAE_lgbm_noFS': mae_lgbm_noFS, 'MAE_pi-lgbm': mae_pi_lgbm, 'MAE_pi-lgbm_noFS': mae_pi_lgbm_noFS,
-        'MAE_S_mlp': mae_S_mlp, 'MAE_S_mlp_noFS': mae_S_mlp_noFS, 'MAE_S_lgbm': mae_S_lgbm, 'MAE_S_lgbm_noFS': mae_S_lgbm_noFS, 'MAE_S_pi-lgbm': mae_S_pi_lgbm, 'MAE_S_pi-lgbm_noFS': mae_S_pi_lgbm_noFS,
-        'MAE_Y_mlp': mae_Y_mlp, 'MAE_Y_mlp_noFS': mae_Y_mlp_noFS, 'MAE_Y_lgbm': mae_Y_lgbm, 'MAE_Y_lgbm_noFS': mae_Y_lgbm_noFS, 'MAE_Y_pi-lgbm': mae_Y_pi_lgbm, 'MAE_Y_pi-lgbm_noFS': mae_Y_pi_lgbm_noFS,
-        # Root Mean Squared Error
-        'RMSE_mlp': rmse_mlp, 'RMSE_mlp_noFS': rmse_mlp_noFS, 'RMSE_lgbm': rmse_lgbm, 'RMSE_lgbm_noFS': rmse_lgbm_noFS, 'RMSE_pi-lgbm': rmse_pi_lgbm, 'RMSE_pi-lgbm_noFS': rmse_pi_lgbm_noFS,
-        'RMSE_S_mlp': rmse_S_mlp, 'RMSE_S_mlp_noFS': rmse_S_mlp_noFS, 'RMSE_S_lgbm': rmse_S_lgbm, 'RMSE_S_lgbm_noFS': rmse_S_lgbm_noFS, 'RMSE_S_pi-lgbm': rmse_S_pi_lgbm, 'RMSE_S_pi-lgbm_noFS': rmse_S_pi_lgbm_noFS,
-        'RMSE_Y_mlp': rmse_Y_mlp, 'RMSE_Y_mlp_noFS': rmse_Y_mlp_noFS, 'RMSE_Y_lgbm': rmse_Y_lgbm, 'RMSE_Y_lgbm_noFS': rmse_Y_lgbm_noFS, 'RMSE_Y_pi-lgbm': rmse_Y_pi_lgbm, 'RMSE_Y_pi-lgbm_noFS': rmse_Y_pi_lgbm_noFS,
+        # Mean Squared Error
+        'MSE_mlp': mse_mlp, 'MSE_mlp_noFS': mse_mlp_noFS, 'MSE_lgbm': mse_lgbm, 'MSE_lgbm_noFS': mse_lgbm_noFS, 'MSE_pi-lgbm': mse_pi_lgbm, 'MSE_pi-lgbm_noFS': mse_pi_lgbm_noFS,
+        'MSE_Y_mlp': mse_Y_mlp, 'MSE_Y_mlp_noFS': mse_Y_mlp_noFS, 'MSE_Y_lgbm': mse_Y_lgbm, 'MSE_Y_lgbm_noFS': mse_Y_lgbm_noFS, 'MSE_Y_pi-lgbm': mse_Y_pi_lgbm, 'MSE_Y_pi-lgbm_noFS': mse_Y_pi_lgbm_noFS,
         # Coefficient of Determination R^2
         'R2_mlp': r2_mlp, 'R2_mlp_noFS': r2_mlp_noFS, 'R2_lgbm': r2_lgbm, 'R2_lgbm_noFS': r2_lgbm_noFS, 'R2_pi-lgbm': r2_pi_lgbm, 'R2_pi-lgbm_noFS': r2_pi_lgbm_noFS,
-        'R2_S_mlp': r2_S_mlp, 'R2_S_mlp_noFS': r2_S_mlp_noFS, 'R2_S_lgbm': r2_S_lgbm, 'R2_S_lgbm_noFS': r2_S_lgbm_noFS, 'R2_S_pi-lgbm': r2_S_pi_lgbm, 'R2_S_pi-lgbm_noFS': r2_S_pi_lgbm_noFS,
         'R2_Y_mlp': r2_Y_mlp, 'R2_Y_mlp_noFS': r2_Y_mlp_noFS, 'R2_Y_lgbm': r2_Y_lgbm, 'R2_Y_lgbm_noFS': r2_Y_lgbm_noFS, 'R2_Y_pi-lgbm': r2_Y_pi_lgbm, 'R2_Y_pi-lgbm_noFS': r2_Y_pi_lgbm_noFS,
-        # Adjusted Coefficient of Determination
-        'R2adj_mlp': r2adj_mlp, 'R2adj_mlp_noFS': r2adj_mlp_noFS, 'R2adj_lgbm': r2adj_lgbm, 'R2adj_lgbm_noFS': r2adj_lgbm_noFS, 'R2adj_pi-lgbm': r2adj_pi_lgbm, 'R2adj_pi-lgbm_noFS': r2adj_pi_lgbm_noFS,
-        'R2adj_S_mlp': r2adj_S_mlp, 'R2adj_S_mlp_noFS': r2adj_S_mlp_noFS, 'R2adj_S_lgbm': r2adj_S_lgbm, 'R2adj_S_lgbm_noFS': r2adj_S_lgbm_noFS, 'R2adj_S_pi-lgbm': r2adj_S_pi_lgbm, 'R2adj_S_pi-lgbm_noFS': r2adj_S_pi_lgbm_noFS,
-        'R2adj_Y_mlp': r2adj_Y_mlp, 'R2adj_Y_mlp_noFS': r2adj_Y_mlp_noFS, 'R2adj_Y_lgbm': r2adj_Y_lgbm, 'R2adj_Y_lgbm_noFS': r2adj_Y_lgbm_noFS, 'R2adj_Y_pi-lgbm': r2adj_Y_pi_lgbm, 'R2adj_Y_pi-lgbm_noFS': r2adj_Y_pi_lgbm_noFS,
         # Pearson Correlation Coefficient
         'R_mlp': r_mlp, 'R_mlp_noFS': r_mlp_noFS, 'R_lgbm': r_lgbm, 'R_lgbm_noFS': r_lgbm_noFS, 'R_pi-lgbm': r_pi_lgbm, 'R_pi-lgbm_noFS': r_pi_lgbm_noFS,
-        'R_S_mlp': rS_mlp, 'R_S_mlp_noFS': rS_mlp_noFS, 'R_S_lgbm': rS_lgbm, 'R_S_lgbm_noFS': rS_lgbm_noFS, 'R_S_pi-lgbm': rS_pi_lgbm, 'R_S_pi-lgbm_noFS': rS_pi_lgbm_noFS,
-        'R_Y_mlp': rY_mlp, 'R_Y_mlp_noFS': rY_mlp_noFS, 'R_Y_lgbm': rY_lgbm, 'R_Y_lgbm_noFS': rY_lgbm_noFS, 'R_Y_pi-lgbm': rY_pi_lgbm, 'R_Y_pi-lgbm_noFS': rY_pi_lgbm_noFS
+        'R_Y_mlp': rY_mlp, 'R_Y_mlp_noFS': rY_mlp_noFS, 'R_Y_lgbm': rY_lgbm, 'R_Y_lgbm_noFS': rY_lgbm_noFS, 'R_Y_pi-lgbm': rY_pi_lgbm, 'R_Y_pi-lgbm_noFS': rY_pi_lgbm_noFS,
     }
     performance_df.loc[results_folder] = row_data
     performance_df.to_csv(performance_df_file)
@@ -629,9 +501,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
     parser.add_argument('--results_folder', type=str, help='Name of experiment and of the output folder where to store the results')
     parser.add_argument('--model_kind', type=str, help='Model kind')
-    parser.add_argument('--acc_metric', type=str, help='Accuracy metric used in the FS process, can be either mse or rY (annual correlation)')
     parser.add_argument('--n_folds', type=int, default=3, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
     parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.acc_metric, args.n_folds, args.start_year, args.end_year)
+    main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.n_folds, args.start_year, args.end_year)
