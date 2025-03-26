@@ -1,4 +1,5 @@
-import os 
+import os
+import io
 import xarray as xr
 import numpy as np
 import pandas as pd
@@ -9,9 +10,12 @@ import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
 import matplotlib.gridspec as gridspec
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from PIL import Image
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
+import ipywidgets as widgets
 from keras.models import load_model
 from sklearn.model_selection import KFold
 from sklearn import preprocessing
@@ -410,7 +414,7 @@ def runs_info(basin, run_name):
 
     return Y_pred, Y_pred_noFS, X_test_eval, X_test_eval_noFS, mlps, mlps_noFS, perm_importance_mlp, perm_importance_mlp_noFS, shap_values_mlp, shap_values_mlp_noFS
 
-def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi):
+def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi, show=True):
     fig_annual = plt.figure(figsize=(16, 8))
     axY = fig_annual.add_subplot(111)
     # observations
@@ -429,13 +433,14 @@ def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_no
     axY.set_yticklabels(axY.get_yticks(), fontsize=14)
     axY.set_xlabel('Years', fontsize=16)
     axY.set_ylabel('# of TCs per year', fontsize=16)
-    axY.legend(fontsize=14, loc='upper center')
+    axY.legend(fontsize=14, loc='best')
     # Finalize the figure
     fig_annual.set_tight_layout(True)
-    plt.show()
+    if show:
+        plt.show()
     return fig_annual
 
-def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi):
+def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi, show=True):
     fig_ts = plt.figure(figsize=(60, 16))
     ## Monthly time series ##
     ax = fig_ts.add_subplot(111)
@@ -456,13 +461,14 @@ def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_n
     ax.set_yticklabels(ax.get_yticks(), fontsize=26)
     ax.set_xlabel('Months', fontsize=36)
     ax.set_ylabel('# of TCs', fontsize=36)
-    ax.legend(fontsize=36, loc='upper left')
+    ax.legend(fontsize=36, loc='best')
     # Finalize the figure
     fig_ts.set_tight_layout(True)
-    plt.show()
+    if show:
+        plt.show()
     return fig_ts
 
-def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_cluster, selected_features):
+def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_cluster, selected_features, show=True):
     # Set list of the variables of which there are possible clusters
     cluster_variables = ['abs_vo850', 'mpi', 'msl', 'r700', 'sst', 'vo850', 'vws850-200', 'w']
     # Set figure charateristics depending on the basin
@@ -545,11 +551,11 @@ def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_
     cbar.set_label('Clusters', fontsize=24)
     # Finalize the figure
     fig_basin.set_tight_layout(True)
-    plt.show()
-    
+    if show:
+        plt.show()
     return fig_basin
 
-def plot_shap_values(shap_values_mlp):
+def plot_shap_values(shap_values_mlp, show=True):
     # Get the ordered features from the shap values of the first fold
     abs_shap_values_fold1 = np.abs(shap_values_mlp[0].values)
     max_abs_per_col = np.max(abs_shap_values_fold1, axis=0)
@@ -637,10 +643,11 @@ def plot_shap_values(shap_values_mlp):
         ax.spines['left'].set_visible(False)
     # Adjust the layout
     fig.set_tight_layout(True)
-    plt.show()
+    if show:
+        plt.show()
     return fig
 
-def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_years_df):
+def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_years_df, show=True):
     # Get the ordered features from the shap values of the first fold
     abs_shap_values_fold1 = np.abs(shap_values_mlp[0].values)
     max_abs_per_col = np.max(abs_shap_values_fold1, axis=0)
@@ -747,7 +754,7 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     new_legend_handles[1] = legend_handles[2]
     new_legend_handles[4] = legend_handles[3]
     new_legend_handles[2] = legend_handles[4]
-    ax.legend(handles=new_legend_handles.tolist(), loc='center right', fontsize=fonts_size[2])
+    ax.legend(handles=new_legend_handles.tolist(), loc='lower right', fontsize=fonts_size[2])
     # Add colorbar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
@@ -775,5 +782,6 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     ax.spines['left'].set_visible(False)
     # Adjust the layout
     fig.set_tight_layout(True)
-    plt.show()
+    if show:
+        plt.show()
     return fig
