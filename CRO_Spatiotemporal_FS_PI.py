@@ -52,24 +52,24 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
     eval_metric = mse_pred + mse_gpi
     return 'pi-mse_eval', eval_metric, False
 
-def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
+def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1970-2022_2.5x2.5.csv'
+    target_file = 'target_1980-2022_2.5x2.5.csv'
     # Set directories
-    if anomaly_clustering == 'y' and remove_seasonality == 'y':
-        raise ValueError('Cannot build a dataset with both anomaly clustering and deseasonalization, check utils_clustering.py')
+    if remove_trend == 'y' and remove_seasonality == 'y':
+        raise ValueError('To run feature selection with dataset withot trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
     fs_dir = os.path.join(project_dir, 'FS_TCG')
-    if anomaly_clustering == 'y':
-        data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_anomaly')
-    elif remove_seasonality == 'y':
+    if remove_seasonality == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_deseason')
+    elif remove_trend == 'y':
+        data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_detrend')
     else:
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
 
     # Set path and name of the predictor dataset and target dataset
-    experiment_filename = f'1970-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)
@@ -96,7 +96,7 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
 
     # Split the dataset into train and test
     train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
-    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year < test_yearF)
+    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
 
     """
     All the following methods will have to be implemented for the algorithm to work properly with the same inputs, except for the constructor 
@@ -292,17 +292,17 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature selection with CRO')
-    parser.add_argument('--basin', default='GLB', type=str, help='Basin')
-    parser.add_argument('--n_clusters', default=5, type=int, help='Number of clusters')
-    parser.add_argument('--anomaly_clustering', default='n', type=str, help='If y retrieve dataset of anomaly clustering')
-    parser.add_argument('--remove_seasonality', default='y', type=str, help='If y retrieve dataset where seasonality has been removed') 
-    parser.add_argument('--n_vars', type=int, default=8, help='Number of atmospheric variables considered in the FS process')
-    parser.add_argument('--n_idxs', type=int, default=9, help='Number of climate indexes considered in the FS process')
-    parser.add_argument('--output_folder', type=str, default='test', help='Name of experiment and of the output folder where to store the results')
-    parser.add_argument('--model_kind', type=str, default='pi-lgbm', help='ML model to train for the computation of the optimization metric')
+    parser.add_argument('--basin', type=str, help='Basin')
+    parser.add_argument('--n_clusters', type=int, help='Number of clusters')
+    parser.add_argument('--remove_trend', type=str, help='If y retrieve dataset where trend has been removed')
+    parser.add_argument('--remove_seasonality', type=str, help='If y retrieve dataset where seasonality has been removed') 
+    parser.add_argument('--n_vars', type=int, help='Number of atmospheric variables considered in the FS process')
+    parser.add_argument('--n_idxs', type=int, help='Number of climate indexes considered in the FS process')
+    parser.add_argument('--output_folder', type=str, help='Name of experiment and of the output folder where to store the results')
+    parser.add_argument('--model_kind', type=str, help='ML model to train for the computation of the optimization metric')
     parser.add_argument('--train_yearI', type=int, default=1980, help='Initial year for training')
     parser.add_argument('--train_yearF', type=int, default=2013, help='Final year for training')
     parser.add_argument('--test_yearF', type=int, default=2021, help='Final year for testing')
     args = parser.parse_args()
-    main(args.basin, args.n_clusters, args.anomaly_clustering, args.remove_seasonality, args.n_vars, args.n_idxs, args.output_folder, args.model_kind, args.train_yearI, 
+    main(args.basin, args.n_clusters, args.remove_trend, args.remove_seasonality, args.n_vars, args.n_idxs, args.output_folder, args.model_kind, args.train_yearI, 
          args.train_yearF, args.test_yearF)
