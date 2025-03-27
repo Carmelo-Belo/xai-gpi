@@ -204,7 +204,7 @@ def deseason_detrend_3Darray(data):
                 residual.loc[dict(latitude=lat, longitude=lon)] = decomposition.resid
     return seasonal, trend, residual
 
-def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI, train_yearF, resolution, path_predictor, path_output, by_anomaly, deseasonalize):
+def perform_clustering(var, level, basin, n_clusters, train_yearI, train_yearF, resolution, path_predictor, path_output, deseasonalize, detrend):
     """
     Perform clustering of the specified atmospheric variable.
 
@@ -213,14 +213,10 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
             The acronym of the variable to cluster as saved in the .nc files
         level: str
             The pressure level of the variable to cluster, if surface level, set to 'sfc'
-        months: list
-            The months to consider for the clustering
         basin: str
             The basin considered for the clustering
         n_clusters: int
             The number of clusters to create
-        norm: bool
-            If True, normalize the data
         train_yearI: int
             The initial year for training
         train_yearF: int
@@ -235,6 +231,8 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
             If True, cluster according to the anomalies of the variable
         deseasonalize: bool
             if True, remove the seasonal cycle from the data and cluster the deseasonalized data
+        detrend: bool
+            if True, remove the trend from the data and cluster the detrended data
     Outputs:
         centroids: list
             The indices of the nodes closest to the cluster centers
@@ -245,10 +243,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         labels_dataframe: pd.DataFrame
             The dataframe containing the cluster labels of each node
     """
-    # Do not perform clustering if by_anomaly is True and deseasonalize is True
-    if by_anomaly == True and deseasonalize == True:
-        raise ValueError('Clustering by anomaly considerd the original data, not the deseasonalized data')
-
     ## Load the variable data to cluster ## 
     # Define geographical coordinates according to the basin considered
     if basin == 'NWP':
@@ -269,7 +263,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         raise ValueError('Basin not recognized')
     
     # Data extraction from .nc files
-    for y, year in enumerate(range(1970, 2023)):
+    for y, year in enumerate(range(1980, 2021)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
             total_data = xr.open_dataset(path)[var]
@@ -299,12 +293,13 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     # Filtered data based on the geographical limits
     if basin != 'GLB':
         total_data = crop_field(total_data, min_lon, max_lon, min_lat, max_lat)
-        anomaly = crop_field(anomaly, min_lon, max_lon, min_lat, max_lat)
     # deseasonalize the data if the deseasonalize flag is True
     if deseasonalize == True:
         seasonal, trend, residual = deseason_detrend_3Darray(total_data)
         total_data = total_data - seasonal
-    ## IF WE WANT TO WORK ONLY ON CYCLONE SEASON WHEN BASIN WISE WE NEED TO ADJUST IT HERE ##
+    if detrend == True:
+        seasonal, trend, residual = deseason_detrend_3Darray(total_data)
+        total_data = total_data - trend
 
     ## Perform the cluster only on the train years ##
     # Get the train data and the anomalies train data for the variable
@@ -312,9 +307,7 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
     train_data_anomaly = anomaly.sel(time=slice(str(train_yearI)+'-01-01', str(train_yearF)+'-12-31'))
     # Reshape the data -> (time, lat, lon) -> (lat*lon, time)
     data = train_data.values
-    data_anomaly = train_data_anomaly.values
     data_res = data.reshape(data.shape[0], data.shape[1]*data.shape[2]).T
-    data_res_anomaly = data_anomaly.reshape(data_anomaly.shape[0], data_anomaly.shape[1]*data_anomaly.shape[2]).T
 
     # Mask the data if is a variable defined over the ocean
     ocean_vars = ['sst', 'ssta20', 'ssta30', 'mpi']
@@ -322,41 +315,26 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
         ocean_mask = ~np.any(np.isnan(data_res), axis=1)
     else:
         ocean_mask = None
-    ## MASKING ONLY FOR OCEAN VARIABLES, NEED TO CHECK IF NECESSARY FOR OTHER VARIABLES, OR WHEN WORKING BASIN WISE ##
     mask = ocean_mask
     if mask is None:
         data_res_masked = data_res
-        anomaly_res_masked = data_res_anomaly
     else:
         data_res_masked = data_res[mask]
-        anomaly_res_masked = data_res_anomaly[mask]
-
-    # Normalize each time series
-    if norm==True:
-        data_res_masked = normalize(data_res_masked, axis=1, copy=True, return_norm=False)
-        anomaly_res_masked = normalize(anomaly_res_masked, axis=1, copy=True, return_norm=False)
 
     # Perform the clustering
-    if by_anomaly == True:
-        cluster = cluster_model(anomaly_res_masked, n_clusters, var)
-        cluster.check_data()
-        cluster.kmeans()
-        # Get the closest node to the cluster center
-        centroids = cluster_model.get_closest2center2(cluster, anomaly_res_masked)
-    else:
-        cluster = cluster_model(data_res_masked, n_clusters, var)
-        cluster.check_data()
-        cluster.kmeans()
-        # Get the closest node to the cluster center
-        centroids = cluster_model.get_closest2center2(cluster, data_res_masked)
+    cluster = cluster_model(data_res_masked, n_clusters, var)
+    cluster.check_data()
+    cluster.kmeans()
+    # Get the closest node to the cluster center
+    centroids = cluster_model.get_closest2center2(cluster, data_res_masked)
 
     # Plot the clusters
     latitudes = train_data.latitude.values
     longitudes = train_data.longitude.values
-    if by_anomaly == True:
-        clusters_fig = cluster_model.plot_clusters(basin, cluster, anomaly_res_masked, latitudes, longitudes, mask, var_name + ' anomaly')
-    elif deseasonalize == True:
+    if deseasonalize == True:
         clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name + ' deseasonalized')
+    elif detrend == True:
+        clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name + ' detrended')
     else:
         clusters_fig = cluster_model.plot_clusters(basin, cluster, data_res_masked, latitudes, longitudes, mask, var_name)
 
@@ -394,7 +372,6 @@ def perform_clustering(var, level, months, basin, n_clusters, norm, train_yearI,
 
     for c in range(len(centroids)):
         cluster_mask = cluster.labels == c
-        batch_size = 100
         if mask is None:
             data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
         else:
@@ -470,7 +447,7 @@ def perform_clustering_noTS(var, level, basin, n_clusters, norm, train_yearI, tr
         raise ValueError('Basin not recognized')
     
     # Data extraction from .nc files
-    for y, year in enumerate(range(1970, 2023)):
+    for y, year in enumerate(range(1980, 2022)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
             total_data = xr.open_dataset(path)[var]
