@@ -47,7 +47,7 @@ def main(basin, n_clusters, n_vars, n_idxs, output_folder, model_kind, train_yea
 
     # Split the dataset into train and test
     train_indices = (predictors_df.index.year >= train_yearI) & (predictors_df.index.year <= train_yearF) 
-    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year < test_yearF)
+    test_indices = (predictors_df.index.year > train_yearF) & (predictors_df.index.year <= test_yearF)
 
     """
     All the following methods will have to be implemented for the algorithm to work properly with the same inputs, except for the constructor 
