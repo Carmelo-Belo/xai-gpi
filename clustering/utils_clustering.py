@@ -12,7 +12,7 @@ import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter)
 import os
-from statsmodels.tsa.seasonal import STL, seasonal_decompose
+from statsmodels.tsa.seasonal import STL
 
 class cluster_model:
 
@@ -551,7 +551,6 @@ def perform_clustering_noTS(var, level, basin, n_clusters, norm, train_yearI, tr
     data_cluster_avg = residual.values
     for c in range(len(centroids)):
         cluster_mask = cluster.labels == c
-        batch_size = 100
         if mask is None:
             data_cluster_avg_masked = data_cluster_avg.reshape(data_cluster_avg.shape[0], data_cluster_avg.shape[1]*data_cluster_avg.shape[2]).T[cluster_mask]
         else:
