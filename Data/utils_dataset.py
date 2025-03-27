@@ -40,7 +40,7 @@ def check_consecutive_repeats(df,col):
         print('Consecutive values repeated found at',col)
         print(repeats[repeats].index)
 
-def build_dataset(basin, cluster_variables, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, deseasonalize, month_col=True):
+def build_dataset(basin, cluster_variables, index_variables, cluster_path, indexes_path, target_path, first_year, last_year, deseasonalize, detrend, month_col=True):
     
     # Define geographical coordinates according to the basin considered
     if basin == 'NWP':
@@ -115,13 +115,19 @@ def build_dataset(basin, cluster_variables, index_variables, cluster_path, index
     target = pd.DataFrame(index=date_range)
     target['tcg'] = tcg_ds.tcg.sum(dim=['latitude', 'longitude']).values.astype(int)
 
-    # If deseasonalize is True, remove the seasonal cycle from the data and return also the seasonal component, otherwise return the dataset and target
+    # If deseasonalize is True, remove the seasonal cycle, if detrend is True, remove the trend
     if deseasonalize:
         decomposition = STL(target['tcg']).fit()
         deseason_target = target['tcg'] - decomposition.seasonal
         deseason_target = deseason_target.to_frame().rename(columns={0: 'tcg'})
         seasonal = decomposition.seasonal.to_frame()
         return dataset, target, deseason_target, seasonal
+    elif detrend:
+        decomposition = STL(target['tcg']).fit()
+        detrend_target = target['tcg'] - decomposition.trend
+        detrend_target = detrend_target.to_frame().rename(columns={0: 'tcg'})
+        trend = decomposition.trend.to_frame()
+        return dataset, target, detrend_target, trend
     else:
         return dataset, target
     
