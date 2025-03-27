@@ -1,5 +1,6 @@
 import os
 import argparse
+import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -64,6 +65,11 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
     return 'pi-mse_eval', eval_metric, False
 
 def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds, start_year, end_year):
+    # Set the random seed for reproducibility
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
     
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
@@ -240,7 +246,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         X_test_noFS = pd.DataFrame(X_std_test_noFS, columns=X_test_fold_noFS.columns, index=X_test_fold_noFS.index)
 
         # Split the training set in training and validation sets for all models and both datasets
-        X_t, X_v, Y_t, Y_v, X_t_noFS, X_v_noFS, gpi_pi_t, gpi_pi_v = train_test_split(X_train, Y_train, X_train_noFS, gpi_pi_train, test_size=0.2, random_state=42)
+        X_t, X_v, Y_t, Y_v, X_t_noFS, X_v_noFS, gpi_pi_t, gpi_pi_v = train_test_split(X_train, Y_train, X_train_noFS, gpi_pi_train, test_size=0.2, random_state=seed)
 
         ## Define common training parameters and callbacks for the mlp ##
         n_neurons = 64

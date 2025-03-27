@@ -1,5 +1,6 @@
 import os
 import argparse
+import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -63,22 +64,27 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
     return 'pi-mse_eval', eval_metric, False
 
 def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds, start_year, end_year):
-    
+    # Set the random seed for reproducibility
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+
     # Set project directory and name of file containing the target variable
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1970-2022_2.5x2.5.csv'
+    target_file = 'target_1980-2022_2.5x2.5.csv'
 
     # Retrieve the clusters type of data from the results folder
     nc_string = results_folder.split('_')[2]
-    if "A" in nc_string:
-        cluster_data = f'{basin}_{n_clusters}clusters_anomaly'
-    elif "DS" in nc_string:
+    if "DS" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
+    elif "DT" in nc_string:
+        cluster_data = f'{basin}_{n_clusters}clusters_detrend'
     else:
         cluster_data = f'{basin}_{n_clusters}clusters'
 
     # Set the paths to the files
-    experiment_filename = f'1970-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     sol_filename = f'{model_kind}_' + experiment_filename
     predictor_file = 'predictors_' + experiment_filename
     fs_dir = os.path.join(project_dir, 'FS_TCG')
@@ -94,14 +100,18 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     os.makedirs(results_figure_dir, exist_ok=True)
 
     # Load the predictors and the target in a DataFrame
+    years = np.arange(start_year, end_year+1, 1)
     predictors_df = pd.read_csv(predictors_path, index_col=0)
     predictors_df.index = pd.to_datetime(predictors_df.index)
+    predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
+    target_df = target_df.loc[target_df.index.year.isin(years)]
 
     # Load the gpis time series dataframe and select the target GPIs for physical information to pass to the network
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
+    gpis_df = gpis_df.loc[gpis_df.index.year.isin(years)]
     gpi_pi = gpis_df['ogpi']
 
     # Load the labels files and plot the clusters for each atmospheric variable
@@ -132,7 +142,6 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     fig.savefig(os.path.join(results_figure_dir, f'CV_sol_evolution.pdf'), format='pdf', dpi=300)
 
     # Compute correlations between the candidate variabels and the target variable
-    years = np.arange(start_year, end_year+1, 1)
     filtered_target_df = target_df.loc[target_df.index.year.isin(years)]
     series1 = filtered_target_df['tcg'].to_numpy()
     filtered_predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
@@ -237,15 +246,15 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         X_test_noFS = pd.DataFrame(X_std_test_noFS, columns=X_test_fold_noFS.columns, index=X_test_fold_noFS.index)
 
         # Split the training set in training and validation sets for all models and both datasets
-        X_t, X_v, Y_t, Y_v, X_t_noFS, X_v_noFS, gpi_pi_t, gpi_pi_v = train_test_split(X_train, Y_train, X_train_noFS, gpi_pi_train, test_size=0.2, random_state=42)
+        X_t, X_v, Y_t, Y_v, X_t_noFS, X_v_noFS, gpi_pi_t, gpi_pi_v = train_test_split(X_train, Y_train, X_train_noFS, gpi_pi_train, test_size=0.2, random_state=seed)
 
         ## Define common training parameters and callbacks for the mlp ##
         n_neurons = 64
-        epo = 100 # Number of epochs
+        epo = 200 # Number of epochs
         lr = 0.001 # Learning rate
         l2_reg = 0.001
         batch_size = 32
-        callback = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+        callback = callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
 
         ## MLPregressor with Selected Features ##
         # Build and compile the multi layer perceptron model for the optimized dataset
@@ -287,7 +296,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
         n_est = 100 # Number of estimators
         lr = 0.01 # Learning rate
         max_d = 3 # Maximum depth
-        stop_rounds = 10 # Early stopping rounds
+        stop_rounds = 20 # Early stopping rounds
 
         ## LightGBM with Selected Features ##
         # Build, compile and train the lightgbm regressor for the optimized dataset
@@ -354,10 +363,8 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
 
     # Create a dataframe where to store the info of the runs and correlations with the target variable
     # Metrics of error and variability we want to track for the models are:
-    # Mean Absolute Error
-    # Root Mean Squared Error
+    # Mean Squared Error
     # Coefficient of Determination R^2
-    # Adjusted Coefficient of Determination
     # Pearson Correlation Coefficient
     performance_df_file = os.path.join(fs_dir, 'results', f'sim_performance_{basin}.csv')
     performance_columns = ['experiment', 'model', 'n_clusters', 'n_features',
@@ -388,7 +395,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     r2_lgbm_noFS = r2_score(Y_test, Y_pred_lgbm_noFS['tcg'])
     r2_pi_lgbm = r2_score(Y_test, Y_pred_pi_lgbm['tcg'])
     r2_pi_lgbm_noFS = r2_score(Y_test, Y_pred_pi_lgbm_noFS['tcg'])
-    # pearson correlation coefficient with trend and seasonality
+    # pearson correlation coefficient
     r_mlp, _ = pearsonr(Y_test, Y_pred_mlp['tcg'])
     r_mlp_noFS, _ = pearsonr(Y_test, Y_pred_mlp_noFS['tcg'])
     r_lgbm, _ = pearsonr(Y_test, Y_pred_lgbm['tcg'])
@@ -430,21 +437,21 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     Y_pred_lgbm_noFS_annual = Y_pred_lgbm_noFS.groupby(Y_pred_lgbm_noFS.index.year).sum()
     Y_pred_pi_lgbm_annual = Y_pred_pi_lgbm.groupby(Y_pred_pi_lgbm.index.year).sum()
     Y_pred_pi_lgbm_noFS_annual = Y_pred_pi_lgbm_noFS.groupby(Y_pred_pi_lgbm_noFS.index.year).sum()
-    # mean squared error without trend and seasonality
+    # mean squared error 
     mse_Y_mlp = mean_squared_error(Y_test_annual, Y_pred_mlp_annual['tcg'])
     mse_Y_mlp_noFS = mean_squared_error(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
     mse_Y_lgbm = mean_squared_error(Y_test_annual, Y_pred_lgbm_annual['tcg'])
     mse_Y_lgbm_noFS = mean_squared_error(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
     mse_Y_pi_lgbm = mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
     mse_Y_pi_lgbm_noFS = mean_squared_error(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    # coefficient of determination R^2 without trend and seasonality
+    # coefficient of determination R^2 
     r2_Y_mlp = r2_score(Y_test_annual, Y_pred_mlp_annual['tcg'])
     r2_Y_mlp_noFS = r2_score(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
     r2_Y_lgbm = r2_score(Y_test_annual, Y_pred_lgbm_annual['tcg'])
     r2_Y_lgbm_noFS = r2_score(Y_test_annual, Y_pred_lgbm_noFS_annual['tcg'])
     r2_Y_pi_lgbm = r2_score(Y_test_annual, Y_pred_pi_lgbm_annual['tcg'])
     r2_Y_pi_lgbm_noFS = r2_score(Y_test_annual, Y_pred_pi_lgbm_noFS_annual['tcg'])
-    # coefficient of correlation without trend and seasonality
+    # coefficient of correlation
     rY_mlp, _ = pearsonr(Y_test_annual, Y_pred_mlp_annual['tcg'])
     rY_mlp_noFS, _ = pearsonr(Y_test_annual, Y_pred_mlp_noFS_annual['tcg'])
     rY_lgbm, _ = pearsonr(Y_test_annual, Y_pred_lgbm_annual['tcg'])
@@ -458,15 +465,15 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     plt.plot(Y_test_annual.index, Y_test_annual, label='Observed (IBTrACS)', color='#1f77b4', linewidth=2)
     # mlp predictions
     plt.plot(Y_pred_mlp_annual.index, Y_pred_mlp_annual['tcg'], label=f'FS mlp - R:{rY_mlp:.3f}', color='#ff7f0e', linewidth=2)
-    plt.plot(Y_pred_mlp_noFS_annual.index.year, Y_pred_mlp_noFS_annual['tcg'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_mlp_noFS_annual.index, Y_pred_mlp_noFS_annual['tcg'], label=f'NoFS mlp - R:{rY_mlp_noFS:.3f}', color='#ff7f0e', linestyle='--', linewidth=2)
     # lgbm predictions
-    plt.plot(Y_pred_lgbm_annual.index.year, Y_pred_lgbm_annual['tcg'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
-    plt.plot(Y_pred_lgbm_noFS_annual.index.year, Y_pred_lgbm_noFS_annual['tcg'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_annual.index.year, Y_pred_pi_lgbm_annual['tcg'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
-    plt.plot(Y_pred_pi_lgbm_noFS_annual.index.year, Y_pred_pi_lgbm_noFS_annual['tcg'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_lgbm_annual.index, Y_pred_lgbm_annual['tcg'], label=f'FS lgbm - R:{rY_lgbm:.3f}', color='#2ca02c', linewidth=2)
+    plt.plot(Y_pred_lgbm_noFS_annual.index, Y_pred_lgbm_noFS_annual['tcg'], label=f'NoFS lgbm - R:{rY_lgbm_noFS:.3f}', color='#2ca02c', linestyle='--', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_annual.index, Y_pred_pi_lgbm_annual['tcg'], label=f'FS pi-lgbm - R:{rY_pi_lgbm:.3f}', color='#1e2e26', linewidth=2)
+    plt.plot(Y_pred_pi_lgbm_noFS_annual.index, Y_pred_pi_lgbm_noFS_annual['tcg'], label=f'NoFS pi-lgbm - R:{rY_pi_lgbm_noFS:.3f}', color='#1e2e26', linestyle='--', linewidth=2)
     # genesis potential indeces
-    plt.plot(engpi_annual.index.year, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
-    plt.plot(ogpi_annual.index.year, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
+    plt.plot(engpi_annual.index, engpi_annual, label=f'ENGPI - R:{rY_engpi:.3f}', color='#d627bc', linewidth=2)
+    plt.plot(ogpi_annual.index, ogpi_annual, label=f'oGPI- R:{rY_ogpi:.3f}', color='#d627bc', linestyle='--', linewidth=2)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.xlabel('Years')
     plt.ylabel('# of TCs per year')
