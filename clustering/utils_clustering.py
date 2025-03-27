@@ -263,7 +263,7 @@ def perform_clustering(var, level, basin, n_clusters, train_yearI, train_yearF, 
         raise ValueError('Basin not recognized')
     
     # Data extraction from .nc files
-    for y, year in enumerate(range(1980, 2021)):
+    for y, year in enumerate(range(1980, 2023)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
             total_data = xr.open_dataset(path)[var]
@@ -447,7 +447,7 @@ def perform_clustering_noTS(var, level, basin, n_clusters, norm, train_yearI, tr
         raise ValueError('Basin not recognized')
     
     # Data extraction from .nc files
-    for y, year in enumerate(range(1980, 2022)):
+    for y, year in enumerate(range(1980, 2023)):
         path = path_predictor + f'_{resolution}_{year}.nc'
         if y == 0:
             total_data = xr.open_dataset(path)[var]
