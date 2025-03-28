@@ -1,30 +1,27 @@
 import os
-import io
-import xarray as xr
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from itertools import zip_longest
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
 import matplotlib.gridspec as gridspec
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from PIL import Image
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
-import ipywidgets as widgets
 from keras.models import load_model
 from sklearn.model_selection import KFold
 from sklearn import preprocessing
 import shap
 
-def final_models_violins(metric, results_dir, basins, basin_names, predictors_type):
+def final_models_violins(metric, results_dir, basins, basin_names, predictors_type, fs_model):
     # Check predictors type to filter the simulations in the sim_performance files
     if predictors_type != 'all' and predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
         raise ValueError('Predictors type not recognized. Choose between "all", "original", "deseason" or "detrend"')
+    # Check fs_model to filter the simulations in the sim_performance files
+    if fs_model != 'all' and fs_model != 'linreg' and fs_model != 'lgbm' and fs_model != 'pi-lgbm':
+        raise ValueError('Feature selection model not recognized. Choose between "all", "linreg", "lgbm" or "pi-lgbm"')
     # Create a figure for the violin plots
     fmod_violin_fig = plt.figure(figsize=(25, 10))
     fmod_gs = gridspec.GridSpec(2, 3, figure=fmod_violin_fig)
@@ -32,12 +29,19 @@ def final_models_violins(metric, results_dir, basins, basin_names, predictors_ty
         # Load performance tracking file
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
+        # Remove the additional simulations with index number > 5
+        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
+                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        track_df = track_df[condition]
+        # Filter the DataFrame based on the predictors type and feature selection model
         if predictors_type == 'deseason':
             track_df = track_df[track_df.index.str.contains('DS')]
         elif predictors_type == 'detrend':
             track_df = track_df[track_df.index.str.contains('DT')]
         elif predictors_type == 'original':
             track_df = track_df[track_df.index.str.contains('_nc')]
+        if fs_model != 'all':
+            track_df = track_df[track_df['model'] == fs_model]
         # Define performance columns and group models of the same type together
         model_pairs = [('mlp', 'mlp_noFS'), ('lgbm', 'lgbm_noFS'), ('pi-lgbm', 'pi-lgbm_noFS')]
         performance_data = []
@@ -96,6 +100,11 @@ def fs_models_violins(metric, final_model, results_dir, basins, basin_names, pre
         # Load file tracking simulation performance
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
+        # Remove the additional simulations with index number > 5
+        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
+                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        track_df = track_df[condition]
+        # Filter the DataFrame based on the predictors type
         if predictors_type == 'deseason':
             track_df = track_df[track_df.index.str.contains('DS')]
         elif predictors_type == 'detrend':
@@ -109,13 +118,15 @@ def fs_models_violins(metric, final_model, results_dir, basins, basin_names, pre
         median_values = []
         model_positions = []
         if show_noFS:
-            fs_models = ['linreg', '_lgbm', 'pi-lgbm', 'noFS']
-            xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM', 'no FS']
+            # fs_models = ['linreg', 'lgbm', 'pi-lgbm', 'noFS']
+            # xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM', 'no FS']
+            fs_models = ['linreg', 'lgbm', 'noFS']
+            xticks_labels = ['Linear Regression', 'LGBM', 'no FS']
         else:
-            fs_models = ['linreg', '_lgbm', 'pi-lgbm']
+            fs_models = ['linreg', 'lgbm', 'pi-lgbm']
             xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM']
         for model in fs_models:
-            mod_df = track_df[track_df.index.str.contains(model)] if model != 'noFS' else track_df
+            mod_df = track_df[track_df['model'] == model] if model != 'noFS' else track_df
             vals = mod_df[performance_col].values if model != 'noFS' else mod_df[f'{metric}_{final_model}_noFS']
             values.extend(vals)
             model_labels.extend([model] * len(vals))
@@ -150,7 +161,10 @@ def fs_models_violins(metric, final_model, results_dir, basins, basin_names, pre
     plt.show()
     return model_violin_fig
 
-def predictors_type_violins(metric, final_model, results_dir, basins, basin_names):
+def predictors_type_violins(metric, final_model, results_dir, basins, basin_names, fs_model):
+    # Check fs_model to filter the simulations in the sim_performance files
+    if fs_model != 'all' and fs_model != 'linreg' and fs_model != 'lgbm' and fs_model != 'pi-lgbm':
+        raise ValueError('Feature selection model not recognized. Choose between "all", "linreg", "lgbm" or "pi-lgbm"')
     # Create a figure for the violin plots
     pred_type_fig = plt.figure(figsize=(25, 10))
     pred_gs = gridspec.GridSpec(2, 3, figure=pred_type_fig)
@@ -158,16 +172,21 @@ def predictors_type_violins(metric, final_model, results_dir, basins, basin_name
         # Load file tracking simulation performance
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
+        # Remove the additional simulations with index number > 5
+        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
+                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        track_df = track_df[condition]
+        # Filter the DataFrame based on feature selection model
+        if fs_model != 'all':
+            track_df = track_df[track_df['model'] == fs_model]
         performance_col = f'{metric}_{final_model}'
         # Create a list to store data for each cluster count
         predictors_labels = []
         values = []
         median_values = []
         predictors_positions = []
-        # predictors_types = ['_nc', 'DS', 'DT']
-        # xticks_labels = ['Original', 'Deseasonalized', 'Detrended']
-        predictors_types = ['_nc', 'DS']
-        xticks_labels = ['Original', 'Deseasonalized']
+        predictors_types = ['_nc', 'DS', 'DT']
+        xticks_labels = ['Original', 'Deseasonalized', 'Detrended']
         for ptype in predictors_types:
             ptype_df = track_df[track_df.index.str.contains(ptype)]
             vals = ptype_df[performance_col].values
@@ -204,7 +223,13 @@ def predictors_type_violins(metric, final_model, results_dir, basins, basin_name
     plt.show()
     return pred_type_fig
 
-def n_clusters_violins(metric, final_model, fs_model, results_dir, basins, basin_names):
+def n_clusters_violins(metric, final_model, results_dir, basins, basin_names, predictors_type, fs_model):
+    # Check predictors type to filter the simulations in the sim_performance files
+    if predictors_type != 'all' and predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
+        raise ValueError('Predictors type not recognized. Choose between "all", "original", "deseason" or "detrend"')
+    # Check fs_model to filter the simulations in the sim_performance files
+    if fs_model != 'all' and fs_model != 'linreg' and fs_model != 'lgbm' and fs_model != 'pi-lgbm':
+        raise ValueError('Feature selection model not recognized. Choose between "all", "linreg", "lgbm" or "pi-lgbm"')
     # Create a figure for the violin plots
     ncl_violin_fig = plt.figure(figsize=(25, 10))
     ncle_gs = gridspec.GridSpec(2, 3, figure=ncl_violin_fig)
@@ -212,7 +237,19 @@ def n_clusters_violins(metric, final_model, fs_model, results_dir, basins, basin
         # Load file tracking simulation performance
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
-        track_df = track_df[track_df.index.str.contains(fs_model)]
+        # Remove the additional simulations with index number > 5
+        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
+                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        track_df = track_df[condition]
+        # Filter the DataFrame based on the predictors type and feature selection model
+        if fs_model != 'all':
+            track_df = track_df[track_df['model'] == fs_model]
+        if predictors_type == 'deseason':
+            track_df = track_df[track_df.index.str.contains('DS')]
+        elif predictors_type == 'detrend':
+            track_df = track_df[track_df.index.str.contains('DT')]
+        elif predictors_type == 'original':
+            track_df = track_df[track_df.index.str.contains('_nc')]
         performance_col = f'{metric}_{final_model}'
         # Create a list to store data for each cluster count
         cluster_labels = []
@@ -254,6 +291,180 @@ def n_clusters_violins(metric, final_model, fs_model, results_dir, basins, basin
     # Show the plot and return the figure
     plt.show()
     return ncl_violin_fig
+
+def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type):
+    # Check predictors type to filter the simulations in the sim_performance files
+    if predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
+        raise ValueError('Predictors type not recognized. Choose between "original", "deseason" or "detrend"')
+    # Get the predictors for the basin and the number of clusters
+    if predictors_type == 'original':
+        cluster_data = f'{basin}_{n_clusters}clusters'
+    elif predictors_type == 'deseason':
+        cluster_data = f'{basin}_{n_clusters}clusters_deseason'
+    elif predictors_type == 'detrend':
+        cluster_data = f'{basin}_{n_clusters}clusters_detrend'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_9idxs.csv'
+    predictor_file = 'predictors_' + experiment_filename
+    predictors_path = os.path.join(fs_dir, 'data', cluster_data, predictor_file)
+    predictors_df = pd.read_csv(predictors_path, index_col=0)
+    predictors_df.index = pd.to_datetime(predictors_df.index)
+    candidate_variables = predictors_df.columns.to_numpy()
+    # Load the performance file for the basin and filter to get the simulation with the best performance
+    track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
+    track_df = pd.read_csv(track_file, index_col=0)
+    # Remove the additional simulations with index number > 5
+    condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
+                | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+    track_df = track_df[condition]
+    # Filter the DataFrame based on the number of clusters and predictors type
+    track_df = track_df[track_df['n_clusters'] == n_clusters]
+    if predictors_type == 'deseason':
+            track_df = track_df[track_df.index.str.contains('DS')]
+    elif predictors_type == 'detrend':
+        track_df = track_df[track_df.index.str.contains('DT')]
+    elif predictors_type == 'original':
+        track_df = track_df[track_df.index.str.contains('_nc')]
+    # Build the df containing the number of selection of each predictors
+    df_tier_sel_perc_fsmodels = pd.DataFrame(0, columns=candidate_variables, index=['linreg', 'lgbm', 'pi-lgbm'])
+    for r, run_name in enumerate(track_df.index):
+        model_kind = run_name.split('_')[1]
+        sol_filename = f'{model_kind}_{experiment_filename}'
+        output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+        best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
+        best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
+        best_solution = best_solution.to_numpy().flatten()
+        # get feature selection model from run name
+        model_kind = track_df.loc[run_name, 'model']
+        # Select the variables from the best solutions
+        column_names = predictors_df.columns.tolist()
+        feat_sel = best_solution[2*len(column_names):]
+        df_tier_sel_perc_fsmodels.loc[model_kind] = df_tier_sel_perc_fsmodels.loc[model_kind] + feat_sel
+    # Get the percentage of selection
+    df_tier_sel_perc_fsmodels = (df_tier_sel_perc_fsmodels / 5) * 100
+    # Set the figure for the heatmap percentage of selection
+    plt.figure(figsize=(3*n_clusters, 10))
+    ax = sns.heatmap(df_tier_sel_perc_fsmodels, cmap="Blues", linewidths=0.5, linecolor="gray", square=True,
+                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=14)
+    cbar.set_label('% of selection', fontsize=14)
+    # Set xticks labels
+    features_clustered = [var for var in candidate_variables if 'cluster' in var]
+    features_non_clustered = [var for var in candidate_variables if 'cluster' not in var]
+    cluster_numbers = [col.split("cluster")[-1] if "cluster" in col else "" for col in features_clustered]
+    variables = [col.split("_cluster")[0] for col in features_clustered]
+    variable_positions = [variables.index(var) for var in sorted(set(variables), key=variables.index)]
+    xticks_labels = cluster_numbers + features_non_clustered
+    ax.set_xticks(np.arange(len(candidate_variables)) + 0.5)  
+    ax.set_xticklabels(xticks_labels, rotation=40, ha="right", fontsize=12)
+    for i, var in enumerate(sorted(set(variables), key=variables.index)):
+        xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_clusters/2
+        ax.text(xpos, len(df_tier_sel_perc_fsmodels) + 2, var, ha='center', va='center', fontsize=14, fontweight="bold")
+    # Set the vertical lines between the different variables a bit thicker 
+    thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_clusters)]
+    for pos in thick_line_pos:
+        ax.vlines(x=pos, ymin=-0.5, ymax=len(df_tier_sel_perc_fsmodels), linewidth=2.5, color="black")
+    # Overlay red blocks at the bottom for zero columns
+    zero_columns = (df_tier_sel_perc_fsmodels == 0).all(axis=0)
+    for idx, is_zero in enumerate(zero_columns):
+        if is_zero:
+            ax.add_patch(plt.Rectangle((idx, len(df_tier_sel_perc_fsmodels) - 0.55), 1, 0.5, color='red', clip_on=False))
+    # Set the yticks labels fontsize
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=14)
+    # Set the title
+    plt.title(f'{basin_name} - {n_clusters} clusters', fontsize=16, fontweight="bold")
+    plt.show()
+
+def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type, fs_model):
+    # Check predictors type to filter the simulations in the sim_performance files
+    if predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
+        raise ValueError('Predictors type not recognized. Choose between "original", "deseason" or "detrend"')
+    # Check fs_model to filter the simulations in the sim_performance files
+    if fs_model != 'all' and fs_model != 'linreg' and fs_model != 'lgbm' and fs_model != 'pi-lgbm':
+        raise ValueError('Feature selection model not recognized. Choose between "all", "linreg", "lgbm" or "pi-lgbm"')
+    # Get the predictors for the basin and the number of clusters
+    if predictors_type == 'original':
+        cluster_data = f'{basin}_{n_clusters}clusters'
+    elif predictors_type == 'deseason':
+        cluster_data = f'{basin}_{n_clusters}clusters_deseason'
+    elif predictors_type == 'detrend':
+        cluster_data = f'{basin}_{n_clusters}clusters_detrend'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_9idxs.csv'
+    predictor_file = 'predictors_' + experiment_filename
+    predictors_path = os.path.join(fs_dir, 'data', cluster_data, predictor_file)
+    predictors_df = pd.read_csv(predictors_path, index_col=0)
+    predictors_df.index = pd.to_datetime(predictors_df.index)
+    candidate_variables = predictors_df.columns.to_numpy()
+    # Load the performance file for the basin and filter to get the simulation with the best performance
+    track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
+    track_df = pd.read_csv(track_file, index_col=0)
+    track_df = track_df[track_df['n_clusters'] == n_clusters]
+    if fs_model != 'all':
+        track_df = track_df[track_df['model'] == fs_model]
+    if predictors_type == 'deseason':
+            track_df = track_df[track_df.index.str.contains('DS')]
+    elif predictors_type == 'detrend':
+        track_df = track_df[track_df.index.str.contains('DT')]
+    elif predictors_type == 'original':
+        track_df = track_df[track_df.index.str.contains('_nc')]
+    # Build the df containing the number of selection of each predictors
+    performance_col = f'{metric}_{final_model}'
+    sorted_df = track_df.sort_values(performance_col, ascending=True)
+    df_tier_sel_perc = pd.DataFrame(0, columns=candidate_variables, index=['Top20%', 'UpMid20%', 'Mid20%', 'BotMid20%', 'Bot20%'])
+    n_sim = len(sorted_df)
+    for r, run_name in enumerate(sorted_df.index):
+        model_kind = run_name.split('_')[1]
+        sol_filename = f'{model_kind}_{experiment_filename}'
+        output_dir = os.path.join(fs_dir, 'results', basin, run_name)
+        best_sol_path = os.path.join(output_dir, f'best_solution_{sol_filename}')
+        best_solution = pd.read_csv(best_sol_path, sep=',', header=None)
+        best_solution = best_solution.to_numpy().flatten()
+        # Select the variables from the best solutions
+        column_names = predictors_df.columns.tolist()
+        feat_sel = best_solution[2*len(column_names):]
+        if r < int(n_sim * 0.2):
+            df_tier_sel_perc.loc['Top20%'] = df_tier_sel_perc.loc['Top20%'] + feat_sel
+        elif r < int(n_sim * 0.4):
+            df_tier_sel_perc.loc['UpMid20%'] = df_tier_sel_perc.loc['UpMid20%'] + feat_sel
+        elif r < int(n_sim * 0.6):
+            df_tier_sel_perc.loc['Mid20%'] = df_tier_sel_perc.loc['Mid20%'] + feat_sel
+        elif r < int(n_sim * 0.8):
+            df_tier_sel_perc.loc['BotMid20%'] = df_tier_sel_perc.loc['BotMid20%'] + feat_sel
+        else:
+            df_tier_sel_perc.loc['Bot20%'] = df_tier_sel_perc.loc['Bot20%'] + feat_sel
+    df_tier_sel_perc = (df_tier_sel_perc / (n_sim * 0.2)) * 100
+    plt.figure(figsize=(3*n_clusters, 10))
+    ax = sns.heatmap(df_tier_sel_perc, cmap="Blues", linewidths=0.5, linecolor="gray", square=True,
+                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=14)
+    cbar.set_label('% of selection', fontsize=14)
+    # Set xticks labels
+    features_clustered = [var for var in candidate_variables if 'cluster' in var]
+    features_non_clustered = [var for var in candidate_variables if 'cluster' not in var]
+    cluster_numbers = [col.split("cluster")[-1] if "cluster" in col else "" for col in features_clustered]
+    variables = [col.split("_cluster")[0] for col in features_clustered]
+    variable_positions = [variables.index(var) for var in sorted(set(variables), key=variables.index)]
+    xticks_labels = cluster_numbers + features_non_clustered
+    ax.set_xticks(np.arange(len(candidate_variables)) + 0.5)  
+    ax.set_xticklabels(xticks_labels, rotation=40, ha="right", fontsize=12)
+    for i, var in enumerate(sorted(set(variables), key=variables.index)):
+        xpos = variable_positions[i] + (variable_positions[i+1] - variable_positions[i]) / 2 if i < len(variable_positions) - 1 else variable_positions[i] + n_clusters/2
+        ax.text(xpos, len(df_tier_sel_perc) + 2, var, ha='center', va='center', fontsize=14, fontweight="bold")
+    # Set the vertical lines between the different variables a bit thicker 
+    thick_line_pos = [i+1 for i, var in enumerate(candidate_variables) if var.split('_cluster')[-1] == str(n_clusters)]
+    for pos in thick_line_pos:
+        ax.vlines(x=pos, ymin=-0.5, ymax=len(df_tier_sel_perc), linewidth=2.5, color="black")
+    # Overlay red blocks at the bottom for zero columns
+    zero_columns = (df_tier_sel_perc == 0).all(axis=0)
+    for idx, is_zero in enumerate(zero_columns):
+        if is_zero:
+            ax.add_patch(plt.Rectangle((idx, len(df_tier_sel_perc) - 0.55), 1, 0.5, color='red', clip_on=False))
+    # Set the yticks labels fontsize
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=14)
+    # Set the title
+    plt.title(f'{basin_name} - {n_clusters} clusters', fontsize=16, fontweight="bold")
+    plt.show()
 
 def plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list):
     # Get the cluster variables
