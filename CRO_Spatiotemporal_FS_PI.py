@@ -69,6 +69,7 @@ def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, ou
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
 
     # Set path and name of the predictor dataset and target dataset
+    years = np.arange(train_yearI, test_yearF+1, 1)
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
     predictors_path = os.path.join(data_dir, predictor_file)
@@ -76,12 +77,15 @@ def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, ou
     # Load the predictor dataset and target dataset
     predictors_df = pd.read_csv(predictors_path, index_col=0)
     predictors_df.index = pd.to_datetime(predictors_df.index)
+    predictors_df = predictors_df.loc[predictors_df.index.year.isin(years)]
     target_df = pd.read_csv(target_path, index_col=0)
     target_df.index = pd.to_datetime(target_df.index)
+    target_df = target_df.loc[target_df.index.year.isin(years)]
     # Load the gpis time series dataframe and select the target GPIs for physical information to pass to the network
     gpis_path = os.path.join(fs_dir, 'data', f'{basin}_2.5x2.5_gpis_time_series.csv')
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
+    gpis_df = gpis_df.loc[gpis_df.index.year.isin(years)]
     gpi_pi = gpis_df['ogpi']
 
     # Set the file names to store the solutions provided by the algorithm
