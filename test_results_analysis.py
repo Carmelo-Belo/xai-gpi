@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split, KFold
 from sklearn import preprocessing
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy.stats import pearsonr
+from statsmodels.tsa.seasonal import STL
 import utils_results as ut
 
 def loss_gpi_informed(y_true, y_pred, gpi):
@@ -70,18 +71,19 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     np.random.seed(seed)
     tf.random.set_seed(seed)
 
-    # Set project directory and name of file containing the target variable
+    # Set project directory 
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1980-2022_2.5x2.5.csv'
-
-    # Retrieve the clusters type of data from the results folder
+    # Retrieve the clusters type of data from the results folder and the target file name
     nc_string = results_folder.split('_')[2]
     if "DS" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
+        target_file = 'target_deseasonal_1980-2022_2.5x2.5.csv'
     elif "DT" in nc_string:
         cluster_data = f'{basin}_{n_clusters}clusters_detrend'
+        target_file = 'target_detrend_1980-2022_2.5x2.5.csv'
     else:
         cluster_data = f'{basin}_{n_clusters}clusters'
+        target_file = 'target_1980-2022_2.5x2.5.csv'
 
     # Set the paths to the files
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
@@ -112,7 +114,14 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
     gpis_df = gpis_df.loc[gpis_df.index.year.isin(years)]
-    gpi_pi = gpis_df['ogpi']
+    ogpi = gpis_df['ogpi']
+    decomp_ogpi = STL(ogpi).fit()
+    if "DS" in nc_string:
+        gpi_pi = ogpi - decomp_ogpi.seasonal
+    elif "DT" in nc_string:
+        gpi_pi = ogpi - decomp_ogpi.trend
+    else:
+        gpi_pi = ogpi
 
     # Load the labels files and plot the clusters for each atmospheric variable
     files_labels = os.listdir(data_dir)
@@ -426,6 +435,14 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     gpi_indices = gpis_df.index.year.isin(years)
     engpi = gpis_df.loc[gpi_indices, 'engpi']
     ogpi = gpis_df.loc[gpi_indices, 'ogpi']
+    decomp_engpi = STL(engpi).fit()
+    decomp_ogpi = STL(ogpi).fit()
+    if "DS" in nc_string:
+        engpi = engpi - decomp_engpi.seasonal
+        ogpi = ogpi - decomp_ogpi.seasonal
+    elif "DT" in nc_string:
+        engpi = engpi - decomp_engpi.trend
+        ogpi = ogpi - decomp_ogpi.trend
     engpi_annual = engpi.groupby(engpi.index.year).sum()
     ogpi_annual = ogpi.groupby(ogpi.index.year).sum()
 

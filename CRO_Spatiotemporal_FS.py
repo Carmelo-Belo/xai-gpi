@@ -17,19 +17,21 @@ import argparse
 
 def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
-    # Set project directory and name of file containing the target variable
+    # Set project directory
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1980-2022_2.5x2.5.csv'
-    # Set directories
+    # Set directories and name of the target file
     if remove_trend == 'y' and remove_seasonality == 'y':
-        raise ValueError('To run feature selection with dataset withot trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
+        raise ValueError('To run feature selection with dataset without trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
     fs_dir = os.path.join(project_dir, 'FS_TCG')
     if remove_seasonality == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_deseason')
+        target_file = 'target_deseasonal_1980-2022_2.5x2.5.csv'
     elif remove_trend == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_detrend')
+        target_file = 'target_detrend_1980-2022_2.5x2.5.csv'
     else:
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
+        target_file = 'target_1980-2022_2.5x2.5.csv'
 
     # Set path and name of the predictor dataset and target dataset
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'

@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 import os
 import argparse
+from statsmodels.tsa.seasonal import STL
 
 def loss_gpi_informed(y_true, y_pred, gpi):
     y_true = tf.cast(y_true, tf.float32)
@@ -54,19 +55,21 @@ def lgbm_pi_eval(y_true, y_pred, gpi):
 
 def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, output_folder, model_kind, train_yearI, train_yearF, test_yearF):
 
-    # Set project directory and name of file containing the target variable
+    # Set project directory
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    target_file = 'target_1980-2022_2.5x2.5.csv'
-    # Set directories
+    # Set directories and name of the target file
     if remove_trend == 'y' and remove_seasonality == 'y':
-        raise ValueError('To run feature selection with dataset withot trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
+        raise ValueError('To run feature selection with dataset without trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
     fs_dir = os.path.join(project_dir, 'FS_TCG')
     if remove_seasonality == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_deseason')
+        target_file = 'target_deseasonal_1980-2022_2.5x2.5.csv'
     elif remove_trend == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_detrend')
+        target_file = 'target_detrend_1980-2022_2.5x2.5.csv'
     else:
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters')
+        target_file = 'target_1980-2022_2.5x2.5.csv'
 
     # Set path and name of the predictor dataset and target dataset
     years = np.arange(train_yearI, test_yearF+1, 1)
@@ -86,7 +89,14 @@ def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, ou
     gpis_df = pd.read_csv(gpis_path, index_col=0)
     gpis_df.index = pd.to_datetime(gpis_df.index)
     gpis_df = gpis_df.loc[gpis_df.index.year.isin(years)]
-    gpi_pi = gpis_df['ogpi']
+    ogpi = gpis_df['ogpi']
+    decomp_ogpi = STL(ogpi).fit()
+    if remove_seasonality == 'y':
+        gpi_pi = ogpi - decomp_ogpi.seasonal
+    elif remove_trend == 'y':
+        gpi_pi = ogpi - decomp_ogpi.trend
+    else:
+        gpi_pi = ogpi
 
     # Set the file names to store the solutions provided by the algorithm
     output_dir = os.path.join(fs_dir, 'results', basin, output_folder)
