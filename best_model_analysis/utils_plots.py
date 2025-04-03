@@ -559,6 +559,23 @@ def plot_selected_variables_clusters(basin, n_clusters, data_dir, var_list):
 
     return figures, cluster_variables
 
+# Function to plot the training loss and the validation loss during the training of the model
+def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, test_loss, test_loss_noFS):
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(train_loss, label='FS loss', color='#1f77b4')
+    ax.plot(val_loss, label='FS val loss', color='#ff7f0e')
+    ax.plot(train_loss_noFS, label='NoFS loss', color='#1f77b4', linestyle='--')
+    ax.plot(val_loss_noFS, label='NoFS val loss', color='#ff7f0e', linestyle='--')
+    ax.axhline(y=test_loss, color='#2ca02c', linestyle=':', label='Test loss')
+    ax.axhline(y=test_loss_noFS, color='#d62728', linestyle=':', label='NoFS Test loss')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    plt.tight_layout()
+    plt.close()
+    return fig
+
 # Function that from the basin name and simualtion folder name returns several data to be used in the feature importance analysis
 # + sensitivity analysis on the percentage of the selected features in the best models
 def runs_info(basin, run_name):
