@@ -182,13 +182,17 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     time_sequences = sequence_length.astype(int)
     time_lags = final_sequence.astype(int)
     label_selected_vars = []
-    dataset_opt = target_df.copy()
+    shifted_columns = []
     for c, col in enumerate(predictors_df.columns):
         if variable_selection[c] == 0 or time_sequences[c] == 0:
             continue
         for j in range(time_sequences[c]):
-            dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
-            label_selected_vars.append(str(col) +'_lag'+ str(time_lags[c]+j))
+            lag = time_lags[c] + j
+            col_name = f'{col}_lag{lag}'
+            shifted_columns.append(predictors_df[col].shift(lag).rename(col_name))
+            label_selected_vars.append(col_name)
+    shifted_df = pd.concat(shifted_columns, axis=1)
+    dataset_opt = pd.concat([target_df.copy(), shifted_df], axis=1)
 
     # Plot the clusters selected for each atmospheric variable at each time lag
     ut.plot_selected_clusters(basin, n_clusters, label_selected_vars, data_dir, results_figure_dir)

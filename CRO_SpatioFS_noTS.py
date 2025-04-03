@@ -84,12 +84,16 @@ def main(basin, n_clusters, n_vars, n_idxs, output_folder, model_kind, train_yea
                 return 100000
 
             # Create dataset according to solution
-            dataset_opt = target_df.copy()
+            shifted_columns = []
             for c, col in enumerate(predictors_df.columns):
                 if variable_selection[c] == 0 or time_sequences[c] == 0:
                     continue
                 for j in range(time_sequences[c]):
-                    dataset_opt[str(col) +'_lag'+ str(time_lags[c]+j)] = predictors_df[col].shift(time_lags[c]+j)
+                    lag = time_lags[c] + j
+                    col_name = f'{col}_lag{lag}'
+                    shifted_columns.append(predictors_df[col].shift(lag).rename(col_name))
+            shifted_df = pd.concat(shifted_columns, axis=1)
+            dataset_opt = pd.concat([target_df.copy(), shifted_df], axis=1)
     
             # Split dataset into train and test
             train_dataset = dataset_opt[train_indices]
