@@ -30,8 +30,8 @@ def final_models_violins(metric, results_dir, basins, basin_names, predictors_ty
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         # Remove the additional simulations with index number > 5
-        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
-                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
+                | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
         track_df = track_df[condition]
         # Filter the DataFrame based on the predictors type and feature selection model
         if predictors_type == 'deseason':
@@ -101,8 +101,8 @@ def fs_models_violins(metric, final_model, results_dir, basins, basin_names, pre
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         # Remove the additional simulations with index number > 5
-        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
-                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
+                | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
         track_df = track_df[condition]
         # Filter the DataFrame based on the predictors type
         if predictors_type == 'deseason':
@@ -118,10 +118,8 @@ def fs_models_violins(metric, final_model, results_dir, basins, basin_names, pre
         median_values = []
         model_positions = []
         if show_noFS:
-            # fs_models = ['linreg', 'lgbm', 'pi-lgbm', 'noFS']
-            # xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM', 'no FS']
-            fs_models = ['linreg', 'lgbm', 'noFS']
-            xticks_labels = ['Linear Regression', 'LGBM', 'no FS']
+            fs_models = ['linreg', 'lgbm', 'pi-lgbm', 'noFS']
+            xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM', 'no FS']
         else:
             fs_models = ['linreg', 'lgbm', 'pi-lgbm']
             xticks_labels = ['Linear Regression', 'LGBM', 'PI-LGBM']
@@ -173,8 +171,8 @@ def predictors_type_violins(metric, final_model, results_dir, basins, basin_name
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         # Remove the additional simulations with index number > 5
-        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
-                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
+                | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
         track_df = track_df[condition]
         # Filter the DataFrame based on feature selection model
         if fs_model != 'all':
@@ -238,8 +236,8 @@ def n_clusters_violins(metric, final_model, results_dir, basins, basin_names, pr
         track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
         track_df = pd.read_csv(track_file, index_col=0)
         # Remove the additional simulations with index number > 5
-        condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
-                    | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+        condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
+                | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
         track_df = track_df[condition]
         # Filter the DataFrame based on the predictors type and feature selection model
         if fs_model != 'all':
@@ -313,13 +311,13 @@ def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_cl
     track_file = os.path.join(results_dir, f'sim_performance_{basin}.csv')
     track_df = pd.read_csv(track_file, index_col=0)
     # Remove the additional simulations with index number > 5
-    condition = (track_df.index.str.contains('test1') | track_df.index.str.contains('test2') | track_df.index.str.contains('test3') 
-                | track_df.index.str.contains('test4') | track_df.index.str.contains('test5'))
+    condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
+                | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
     track_df = track_df[condition]
     # Filter the DataFrame based on the number of clusters and predictors type
     track_df = track_df[track_df['n_clusters'] == n_clusters]
     if predictors_type == 'deseason':
-            track_df = track_df[track_df.index.str.contains('DS')]
+        track_df = track_df[track_df.index.str.contains('DS')]
     elif predictors_type == 'detrend':
         track_df = track_df[track_df.index.str.contains('DT')]
     elif predictors_type == 'original':
@@ -342,10 +340,17 @@ def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_cl
     # Get the percentage of selection
     df_tier_sel_perc_fsmodels = (df_tier_sel_perc_fsmodels / 5) * 100
     # Set the figure for the heatmap percentage of selection
+    levels = [0, 20, 40, 60, 80, 100]
+    bounds = [0, 10, 30, 50, 70, 90, 101]
+    tick_locations = [(bounds[i] + bounds[i+1]) / 2 for i in range(len(bounds) - 1)]
+    colors = ['white'] + sns.color_palette("Blues", n_colors=len(levels)-1)
+    norm = mcolors.BoundaryNorm(boundaries=bounds, ncolors=len(colors))
+    cmap = mcolors.ListedColormap(colors)
     plt.figure(figsize=(3*n_clusters, 10))
-    ax = sns.heatmap(df_tier_sel_perc_fsmodels, cmap="Blues", linewidths=0.5, linecolor="gray", square=True,
-                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
+    ax = sns.heatmap(df_tier_sel_perc_fsmodels, cmap=cmap, norm=norm, linewidths=0.5, linecolor="gray", square=True,
+                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20, 'ticks': tick_locations})
     cbar = ax.collections[0].colorbar
+    cbar.ax.set_xticklabels([str(v) for v in levels])
     cbar.ax.tick_params(labelsize=14)
     cbar.set_label('% of selection', fontsize=14)
     # Set xticks labels
@@ -432,11 +437,20 @@ def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir,
             df_tier_sel_perc.loc['BotMid20%'] = df_tier_sel_perc.loc['BotMid20%'] + feat_sel
         else:
             df_tier_sel_perc.loc['Bot20%'] = df_tier_sel_perc.loc['Bot20%'] + feat_sel
+    # Get the percentage of selection
     df_tier_sel_perc = (df_tier_sel_perc / (n_sim * 0.2)) * 100
+    # Set the figure for the heatmap percentage of selection
+    levels = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    bounds = [0, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 101]
+    tick_locations = [(bounds[i] + bounds[i+1]) / 2 for i in range(len(bounds) - 1)]
+    colors = ['white'] + sns.color_palette("Blues", n_colors=len(levels)-1)
+    norm = mcolors.BoundaryNorm(boundaries=bounds, ncolors=len(colors))
+    cmap = mcolors.ListedColormap(colors)
     plt.figure(figsize=(3*n_clusters, 10))
-    ax = sns.heatmap(df_tier_sel_perc, cmap="Blues", linewidths=0.5, linecolor="gray", square=True,
-                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.2, 'aspect': 20})
+    ax = sns.heatmap(df_tier_sel_perc, cmap=cmap, norm=norm, linewidths=0.5, linecolor="gray", square=True,
+                    cbar_kws={'orientation': 'horizontal', 'label': '% of selection', 'shrink': 0.3, 'aspect': 60, 'ticks': tick_locations})
     cbar = ax.collections[0].colorbar
+    cbar.ax.set_xticklabels([str(v) for v in levels])
     cbar.ax.tick_params(labelsize=14)
     cbar.set_label('% of selection', fontsize=14)
     # Set xticks labels
