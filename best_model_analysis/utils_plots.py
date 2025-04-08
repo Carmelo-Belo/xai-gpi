@@ -900,7 +900,7 @@ def plot_shap_values(shap_values_mlp, show=True):
         min_round = min_round - 0.1
     if max_round < maximum:
         max_round = max_round + 0.1
-    x_axis = np.round(np.arange(min_round, max_round+0.2, 0.2), 1)
+    x_axis = np.round(np.arange(min_round, max_round+0.5, 0.5), 1)
     # Set the figure and the grid for the subplots
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(2, 4, figure=fig)
@@ -993,7 +993,7 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
         min_round = min_round - 0.1
     if max_round < maximum:
         max_round = max_round + 0.1
-    x_axis = np.round(np.arange(min_round, max_round+0.1, 0.1), 1)
+    x_axis = np.round(np.arange(min_round, max_round+0.5, 0.5), 1)
     # Set the figure and the gridspec for the subplots -> vertical layout
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(1, 1, figure=fig)
