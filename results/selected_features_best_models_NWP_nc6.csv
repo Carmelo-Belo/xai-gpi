@@ -1,9 +1,0 @@
-,50,60,75,90
-0,abs_vo850_cluster2,abs_vo850_cluster2,abs_vo850_cluster5,abs_vo850_cluster5
-1,abs_vo850_cluster5,abs_vo850_cluster5,sst_cluster1,vo850_cluster2
-2,sst_cluster1,sst_cluster1,vo850_cluster1,
-3,vo850_cluster1,vo850_cluster1,vo850_cluster2,
-4,vo850_cluster2,vo850_cluster2,TNA,
-5,w_cluster4,PNA,,
-6,PNA,TNA,,
-7,TNA,,,

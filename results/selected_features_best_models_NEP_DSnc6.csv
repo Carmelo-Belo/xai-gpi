@@ -1,0 +1,14 @@
+,50,60,70,75,80,90
+0,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3
+1,abs_vo850_cluster4,abs_vo850_cluster4,abs_vo850_cluster4,abs_vo850_cluster4,abs_vo850_cluster4,abs_vo850_cluster4
+2,mpi_cluster5,msl_cluster5,msl_cluster5,r700_cluster3,r700_cluster3,vo850_cluster6
+3,msl_cluster5,r700_cluster3,r700_cluster3,vo850_cluster1,vo850_cluster1,w_cluster6
+4,r700_cluster3,r700_cluster5,r700_cluster5,vo850_cluster6,vo850_cluster6,
+5,r700_cluster5,r700_cluster6,vo850_cluster1,w_cluster6,w_cluster6,
+6,r700_cluster6,vo850_cluster1,vo850_cluster6,,,
+7,vo850_cluster1,vo850_cluster4,vws850-200_cluster2,,,
+8,vo850_cluster4,vo850_cluster6,w_cluster6,,,
+9,vo850_cluster6,vws850-200_cluster2,,,,
+10,vws850-200_cluster2,w_cluster6,,,,
+11,vws850-200_cluster3,,,,,
+12,w_cluster6,,,,,

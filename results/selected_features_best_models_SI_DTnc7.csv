@@ -1,0 +1,10 @@
+,50,60,70,75,80,90
+0,abs_vo850_cluster1,abs_vo850_cluster1,w_cluster2,w_cluster2,w_cluster2,w_cluster2
+1,msl_cluster1,msl_cluster1,NAO,NAO,NAO,TSA
+2,r700_cluster2,w_cluster2,TSA,TSA,TSA,WP
+3,w_cluster2,w_cluster6,WP,WP,WP,
+4,w_cluster6,w_cluster7,,,,
+5,w_cluster7,NAO,,,,
+6,NAO,TSA,,,,
+7,TSA,WP,,,,
+8,WP,,,,,
