@@ -390,8 +390,8 @@ def runs_info(basin, run_name):
         xt_noFS.columns = feature_names_noFS
         X_test_eval_noFS.append(xt_noFS)
         # Load the models
-        mlp = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_fold{n_fold+1}.keras'))
-        mlp_noFS = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_noFS_fold{n_fold+1}.keras'))
+        mlp = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_fold{n_fold+1}.keras'), compile=False)
+        mlp_noFS = load_model(os.path.join(final_analysis_dir, 'models', f'mlp_noFS_fold{n_fold+1}.keras'), compile=False)
         mlps.append(mlp)
         mlps_noFS.append(mlp_noFS)
         # Append the predictions to a list
