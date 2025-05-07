@@ -747,7 +747,7 @@ def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_no
     axY.set_yticks(axY.get_yticks())
     axY.set_yticklabels(axY.get_yticks(), fontsize=14)
     axY.set_xlabel('Years', fontsize=16)
-    axY.set_ylabel('# of TCs per year', fontsize=16)
+    axY.set_ylabel('detrended # of TCGs', fontsize=16)
     axY.legend(fontsize=14, loc='best')
     # Finalize the figure
     fig_annual.set_tight_layout(True)
@@ -775,7 +775,7 @@ def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_n
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(ax.get_yticks(), fontsize=26)
     ax.set_xlabel('Months', fontsize=36)
-    ax.set_ylabel('# of TCs', fontsize=36)
+    ax.set_ylabel('detrended # of TCGs', fontsize=36)
     ax.legend(fontsize=36, loc='best')
     # Finalize the figure
     fig_ts.set_tight_layout(True)
