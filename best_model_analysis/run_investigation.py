@@ -43,7 +43,7 @@ def main(basin, run_name):
     # Set the paths to the files
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
-    fs_dir = os.path.join(project_dir, 'FS_TCG')
+    fs_dir = os.path.join(project_dir, 'tcg_fsM')
     results_dir = os.path.join(fs_dir, 'results')
     output_dir = os.path.join(results_dir, basin, run_name)
     data_dir = os.path.join(fs_dir, 'data', cluster_data)

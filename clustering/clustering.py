@@ -12,8 +12,8 @@ def main(basin, n_clusters, res, train_yearI, train_yearF, remove_seasonality, r
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     data_dir = os.path.join(project_dir, 'data')
-    fs_data_dir = os.path.join(project_dir, 'FS_TCG', 'data')
-    clustering_dir = os.path.join(project_dir, 'FS_TCG', 'clustering')
+    fs_data_dir = os.path.join(project_dir, 'tcg_fsM', 'data')
+    clustering_dir = os.path.join(project_dir, 'tcg_fsM', 'clustering')
 
     # Return error if asking to cluster the dataset with both detrending and deseasonalization
     if remove_trend == 'y' and remove_seasonality == 'y':

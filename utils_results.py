@@ -642,7 +642,7 @@ def runs_info(basin, run_name):
         cluster_data = f'{basin}_{n_clusters}clusters'
     # Set the paths to the files
     predictor_file = 'predictors_' + experiment_filename
-    fs_dir = os.path.join(project_dir, 'FS_TCG')
+    fs_dir = os.path.join(project_dir, 'tcg_fsM')
     results_dir = os.path.join(fs_dir, 'results')
     output_dir = os.path.join(fs_dir, 'results', basin, run_name)
     data_dir = os.path.join(fs_dir, 'data', cluster_data)

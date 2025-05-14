@@ -22,7 +22,7 @@ def main(basin, n_clusters, remove_trend, remove_seasonality, n_vars, n_idxs, ou
     # Set directories and name of the target file
     if remove_trend == 'y' and remove_seasonality == 'y':
         raise ValueError('To run feature selection with dataset without trend and seasonality, use the the script CRO_SpatioFS_noTS.py')
-    fs_dir = os.path.join(project_dir, 'FS_TCG')
+    fs_dir = os.path.join(project_dir, 'tcg_fsM')
     if remove_seasonality == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_deseason')
         target_file = 'target_deseasonal_1980-2022_2.5x2.5.csv'

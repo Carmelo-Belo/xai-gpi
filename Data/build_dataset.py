@@ -14,15 +14,15 @@ def main(basin, n_clusters, res, first_year, last_year, remove_seasonality, remo
     # Directories to consider to build the dataset for feature selection
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     if remove_seasonality == 'y':
-        cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters_deseason')
+        cluster_path = os.path.join(project_dir, 'tcg_fsM', 'data', f'{basin}_{n_clusters}clusters_deseason')
         deseasonalize = True
         detrend = False
     elif remove_trend == 'y':
-        cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters_detrend')
+        cluster_path = os.path.join(project_dir, 'tcg_fsM', 'data', f'{basin}_{n_clusters}clusters_detrend')
         deseasonalize = False
         detrend = True
     else:
-        cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters')
+        cluster_path = os.path.join(project_dir, 'tcg_fsM', 'data', f'{basin}_{n_clusters}clusters')
         deseasonalize = False
         detrend = False
     indexes_path = os.path.join(project_dir, 'data', 'CI')

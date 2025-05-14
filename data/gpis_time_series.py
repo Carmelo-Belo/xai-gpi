@@ -9,7 +9,7 @@ from utils import *
 def main(res):
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    save_data_dir = os.path.join(project_dir, 'FS_TCG', 'data')
+    save_data_dir = os.path.join(project_dir, 'tcg_fsM', 'data')
 
     basins = ['GLB', 'NA', 'NEP', 'NWP', 'NI', 'SI', 'SP']
 

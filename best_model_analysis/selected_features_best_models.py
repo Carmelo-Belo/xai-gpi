@@ -95,7 +95,7 @@ def main(predictors_type):
         raise ValueError('Predictors type not recognized. Choose between "original", "deseason" or "detrend".')
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    fs_dir = os.path.join(project_dir, 'FS_TCG')
+    fs_dir = os.path.join(project_dir, 'tcg_fsM')
     results_dir = os.path.join(fs_dir, 'results')
     best_model_dir = os.path.join(fs_dir, 'best_model_analysis')
     fig_dir = os.path.join(best_model_dir, 'figures')

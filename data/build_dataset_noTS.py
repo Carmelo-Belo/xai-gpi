@@ -9,7 +9,7 @@ def main(basin, n_clusters, res, first_year, last_year):
 
     # Directories to consider to build the dataset for feature selection
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    cluster_path = os.path.join(project_dir, 'FS_TCG', 'data', f'{basin}_{n_clusters}clusters_noTS')
+    cluster_path = os.path.join(project_dir, 'tcg_fsM', 'data', f'{basin}_{n_clusters}clusters_noTS')
     indexes_path = os.path.join(project_dir, 'data', 'CI')
     resolution = '{}x{}'.format(res, res)
     target_path = os.path.join(project_dir, 'data', 'IBTrACS', resolution, 'TCG', f'TCG_{resolution}')
