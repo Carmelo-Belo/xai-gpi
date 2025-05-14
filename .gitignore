@@ -20,7 +20,6 @@ data/*clusters_anomaly/
 data/*clusters_deseason/
 data/*clusters_detrend/
 data/*clusters_noTS/
-best_model_analysis/figures/
 best_model_analysis_noTS/figures/
 *.out
 *.DS_Store
