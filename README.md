@@ -29,6 +29,16 @@ SCO-FS is applied across six major tropical ocean basins and incorporates:
 
 ---
 
+## 🌿 Branches
+
+- `main`: clean version of the code for consultation (publication version)
+- `dev`: full development history and work in progress
+
+Feel free to fork the repo and explore both branches.
+Pull requests are welcome via the `dev` branch.
+
+---
+
 ## 📁 Repository Structure
 
 ```
