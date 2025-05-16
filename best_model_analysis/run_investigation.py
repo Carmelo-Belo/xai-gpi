@@ -20,7 +20,7 @@ def main(basin, run_name):
     np.random.seed(seed)
     tf.random.set_seed(seed)
     # Set parameters for later use
-    years = np.arange(1980, 2022, 1) # from 1980 to 2021 included
+    years = np.arange(1980, 2014, 1) # from 1980 to 2013 included
     n_folds = 3
     n_clusters = int(run_name.split('nc')[1].split('_')[0])
     n_vars = int(run_name.split('nv')[1].split('_')[0])

@@ -687,6 +687,6 @@ if __name__ == '__main__':
     parser.add_argument('--model_kind', type=str, help='Model kind')
     parser.add_argument('--n_folds', type=int, default=3, help='Number of CV folds for division in train and test sets')
     parser.add_argument('--start_year', type=int, default=1980, help='Initial year of the dataset to consider')
-    parser.add_argument('--end_year', type=int, default=2021, help='Final year of the dataset to consider')
+    parser.add_argument('--end_year', type=int, default=2013, help='Final year of the dataset to consider')
     args = parser.parse_args()
     main(args.basin, args.n_clusters, args.n_vars, args.n_idxs, args.results_folder, args.model_kind, args.n_folds, args.start_year, args.end_year)
