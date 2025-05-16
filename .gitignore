@@ -12,7 +12,6 @@ results/NWP/
 results/NI/
 results/SP/
 results/SI/
-data/*clusters/
 data/*clusters_anomaly/
 data/*clusters_deseason/
 data/*clusters_detrend/
