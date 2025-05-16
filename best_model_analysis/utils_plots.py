@@ -900,7 +900,10 @@ def plot_shap_values(shap_values_mlp, show=True):
         min_round = min_round - 0.1
     if max_round < maximum:
         max_round = max_round + 0.1
-    x_axis = np.round(np.arange(min_round, max_round+0.5, 0.5), 1)
+    if num_features == 2:
+        x_axis = np.round(np.arange(min_round, max_round+0.8, 0.8), 1)
+    else:
+        x_axis = np.round(np.arange(min_round, max_round+0.5, 0.5), 1)
     # Set the figure and the grid for the subplots
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(2, 4, figure=fig)
