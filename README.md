@@ -104,7 +104,7 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 ## 👀 Additional information
 
-Please refer to the following links for more information regarding the Probabilistic Coral Reef Optimization with Substrate Layers algorithm and the original application of the SpatioTemporal Cluster-Optimized Feature Selection (STCO-FS):
+Please refer to the following links for more information regarding the Probabilistic Coral Reef Optimization with Substrate Layers (PyCROSL) algorithm and the original application of the SpatioTemporal Cluster-Optimized Feature Selection (STCO-FS):
 
-- [https://github.com/jperezaracil/PyCROSL](PyCROSL)
-- [https://github.com/GheodeAI/STCO-FS](STCO-FS)
+- [PyCROSL](https://github.com/jperezaracil/PyCROSL)
+- [STCO-FS](https://github.com/GheodeAI/STCO-FS)
