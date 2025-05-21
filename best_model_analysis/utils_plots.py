@@ -13,6 +13,7 @@ from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
 from keras.models import load_model
 from sklearn.model_selection import KFold
 from sklearn import preprocessing
+from scipy.stats import norm
 import shap
 
 def final_models_violins(metric, results_dir, basins, basin_names, predictors_type, fs_model):
@@ -1103,3 +1104,18 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     if show:
         plt.show()
     return fig
+
+def meng_test(r12, r13, r23, n):
+    # r12 = corr(x1, y), r13 = corr(x2, y), r23 = corr(x1, x2)
+    # n = number of paired observations
+    if n <= 3:
+        raise ValueError("Sample size must be > 3 for reliable estimation")
+    # Average correlation
+    rm = (r12 + r13) / 2
+    # Auxiliary values
+    f = (1 - r23) / (2 * (1 - rm**2))
+    h = (1 - r12**2 - r13**2 - r23**2 + 2*r12*r13*r23)
+    z = (r12 - r13) * np.sqrt((n - 3) * (1 + r23) / (2 * h))
+    # Two-tailed p-value
+    p = 2 * (1 - norm.cdf(abs(z)))
+    return z, p
