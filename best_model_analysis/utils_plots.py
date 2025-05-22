@@ -579,9 +579,8 @@ def plot_train_val_loss(train_loss, val_loss, train_loss_noFS, val_loss_noFS, te
 
 # Function that from the basin name and simualtion folder name returns several data to be used in the feature importance analysis
 # + sensitivity analysis on the percentage of the selected features in the best models
-def runs_info(basin, run_name, project_dir):
+def runs_info(basin, run_name, project_dir, years):
     # Set some additional variables and parameters that generally stay constant
-    years = np.arange(1980, 2022, 1) # from 1980 to 2021 included
     n_folds = 3
     n_clusters = int(run_name.split('nc')[1].split('_')[0])
     n_vars = int(run_name.split('nv')[1].split('_')[0])
