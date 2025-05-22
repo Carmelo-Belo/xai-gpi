@@ -13,6 +13,7 @@ from cartopy.mpl.gridliner import LongitudeFormatter, LatitudeFormatter
 from keras.models import load_model
 from sklearn.model_selection import KFold
 from sklearn import preprocessing
+from scipy.stats import norm
 import shap
 
 def final_models_violins(metric, results_dir, basins, basin_names, predictors_type, fs_model):
@@ -748,7 +749,7 @@ def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_no
     axY.set_yticklabels(axY.get_yticks(), fontsize=14)
     axY.set_xlabel('Years', fontsize=16)
     axY.set_ylabel('detrended # of TCGs', fontsize=16)
-    axY.legend(fontsize=14, loc='best')
+    axY.legend(fontsize=18, loc='best')
     # Finalize the figure
     fig_annual.set_tight_layout(True)
     if show:
