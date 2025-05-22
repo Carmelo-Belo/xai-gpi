@@ -22,7 +22,7 @@ SCO-FS is applied across six major tropical ocean basins and incorporates:
 ## 🧠 Key Features
 
 - 🌍 Supports **six ocean basins**: North Atlantic, Northeastern Pacific, Northwestern Pacific, North Indian, South Indian, and South Pacific.
-- 📊 Incorporates reanalysis data (e.g., ERA5) and climate indices (e.g., ENSO3.4, SOI, PDO).
+- 📊 Incorporates reanalysis data (e.g., ERA5) and climate indices (e.g., Niño3.4, SOI, PDO).
 - ⚙️ Uses **Probabilistic Coral Reef Optimization with Substrate Layers (PCRO-SL)** for robust feature selection.
 - 🧠 Neural network models are trained with features selected per basin.
 - 🔍 SHAP-based explainability to explore **impacts** of environmental drivers.
