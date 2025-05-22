@@ -276,7 +276,7 @@ def n_clusters_violins(metric, final_model, results_dir, basins, basin_names, pr
         # Annotate median values in black
         x_positions = range(len(cluster_positions))
         for x, median in zip(x_positions, median_values):
-            ax.text(x, median, f'{median:.3f}', ha='center', va='bottom', fontsize=12, color='black', fontweight="bold")
+            ax.text(x, median, f'{median:.3f}', ha='center', va='bottom', fontsize=14, color='black', fontweight="bold", bbox=dict(facecolor='white', alpha=0.65, edgecolor='black', boxstyle='round,pad=0.1'))
         # Set title
         ax.set_title(f'{basin_names[bb]} - {metric}', fontdict={'fontsize': 16})
         ax.set_ylabel('')
