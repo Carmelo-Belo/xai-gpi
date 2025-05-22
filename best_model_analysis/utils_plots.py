@@ -940,8 +940,11 @@ def plot_shap_values(shap_values_mlp, basin, show=True):
         cbar.outline.set_visible(False) # remove the colorbar outline
         cbar.set_label('Feature Value', labelpad=-30, fontsize=fonts_size[1])
         # Set yticks
+        yticks_names = np.array(ordered_features)
+        if 'ENSO3.4' in yticks_names: # replace ENSO3.4 with Niño3.4 for correct labeling
+            yticks_names[yticks_names == 'ENSO3.4'] = 'Niño3.4'
         ax.set_yticks(np.arange(len(ordered_features)))
-        ax.set_yticklabels(ordered_features, fontdict={'fontsize': fonts_size[1]})
+        ax.set_yticklabels(yticks_names, fontdict={'fontsize': fonts_size[1]})
         # Set xticks
         ax.set_xticks(x_axis)
         ax.set_xticklabels(x_axis, fontdict={'fontsize': fonts_size[0]})
@@ -1081,8 +1084,11 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     cbar.outline.set_visible(False) # remove the colorbar outline
     cbar.set_label('Feature Value', fontsize=fonts_size[1], labelpad=-25)
     # Set yticks
+    yticks_names = np.array(ordered_features)
+    if 'ENSO3.4' in yticks_names: # replace ENSO3.4 with Niño3.4 for correct labeling
+        yticks_names[yticks_names == 'ENSO3.4'] = 'Niño3.4'
     ax.set_yticks(np.arange(len(ordered_features)*3)[::3])
-    ax.set_yticklabels(ordered_features, fontdict={'fontsize': fonts_size[1]})
+    ax.set_yticklabels(yticks_names, fontdict={'fontsize': fonts_size[1]})
     # Set xticks
     ax.set_xticks(x_axis)
     ax.set_xticklabels(x_axis, fontdict={'fontsize': fonts_size[0]})
