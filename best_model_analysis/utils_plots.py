@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
+import matplotlib.ticker as mtick
 import matplotlib.gridspec as gridspec
 from cartopy import crs as ccrs
 import cartopy.feature as cfeature
@@ -800,6 +801,7 @@ def plot_seasonal_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_
     axS.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], rotation=45, fontsize=14, ha='right')
     axS.set_yticks(axS.get_yticks())
     axS.set_yticklabels(axS.get_yticks(), fontsize=14)
+    axS.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1f'))
     axS.set_xlabel('Months', fontsize=16)
     axS.set_ylabel('Mean # of TCGs', fontsize=16)
     axS.legend(fontsize=18, loc='best')
