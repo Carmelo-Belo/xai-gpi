@@ -756,32 +756,58 @@ def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_no
     return fig_annual
 
 def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi, show=True):
-    fig_ts = plt.figure(figsize=(60, 16))
+    fig_ts = plt.figure(figsize=(50, 20))
     ## Monthly time series ##
     ax = fig_ts.add_subplot(111)
     xticks = pd.Series(obs.index).dt.strftime('%m-%Y').to_numpy()
     # observations
-    ax.plot(xticks, obs, label='Observed (IBTrACS)', color='green', linewidth=4)
+    ax.plot(xticks, obs, label='Observed (IBTrACS)', color='green', linewidth=6)
     # predictions
-    ax.plot(xticks, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=4)
-    ax.plot(xticks, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=4)
+    ax.plot(xticks, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=6)
+    ax.plot(xticks, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=6)
     # gpis
-    ax.plot(xticks, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=4, linestyle='--')
-    ax.plot(xticks, ogpi, label=f'oGPI - R:{r_ogpi:.3f}', color='purple', linewidth=4, linestyle='--')
+    ax.plot(xticks, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=6, linestyle='--')
+    ax.plot(xticks, ogpi, label=f'oGPI - R:{r_ogpi:.3f}', color='purple', linewidth=6, linestyle='--')
     # set figure parameters
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-    ax.set_xticks(ticks=np.arange(len(xticks))[::6])
-    ax.set_xticklabels(xticks[::6], rotation=45, fontsize=26, ha='right')
+    ax.set_xticks(ticks=np.arange(len(xticks))[::12])
+    ax.set_xticklabels(xticks[::12], rotation=45, fontsize=36, ha='right')
     ax.set_yticks(ax.get_yticks())
-    ax.set_yticklabels(ax.get_yticks(), fontsize=26)
-    ax.set_xlabel('Months', fontsize=36)
-    ax.set_ylabel('detrended # of TCGs', fontsize=36)
-    ax.legend(fontsize=36, loc='best')
+    ax.set_yticklabels(ax.get_yticks(), fontsize=42)
+    ax.set_xlabel('Months', fontsize=46)
+    ax.set_ylabel('detrended # of TCGs', fontsize=46)
+    ax.legend(fontsize=50, loc='best')
     # Finalize the figure
     fig_ts.set_tight_layout(True)
     if show:
         plt.show()
     return fig_ts
+
+def plot_seasonal_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_noFS, r_engpi, r_ogpi, show=True):
+    fig_season = plt.figure(figsize=(12, 7))
+    axS = fig_season.add_subplot(111)
+    # observations
+    axS.plot(obs.index, obs, label='Observed (IBTrACS)', color='green', linewidth=3)
+    # mlp predictions
+    axS.plot(pred.index, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=3)
+    axS.plot(pred_noFS.index, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=3)
+    # gpis
+    axS.plot(engpi.index, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=3, linestyle='--')
+    axS.plot(ogpi.index, ogpi, label=f'oGPI - R:{r_ogpi:.3f}', color='purple', linewidth=3, linestyle='--')
+    # set figure parameters
+    axS.grid(True, which='both', linestyle='--', linewidth=0.5)
+    axS.set_xticks(obs.index)
+    axS.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], rotation=45, fontsize=14, ha='right')
+    axS.set_yticks(axS.get_yticks())
+    axS.set_yticklabels(axS.get_yticks(), fontsize=14)
+    axS.set_xlabel('Months', fontsize=16)
+    axS.set_ylabel('Mean # of TCGs', fontsize=16)
+    axS.legend(fontsize=18, loc='best')
+    # Finalize the figure
+    fig_season.set_tight_layout(True)
+    if show:
+        plt.show()
+    return fig_season
 
 def plot_variables_clusters(basin, n_clusters, cluster_data_dir, variable_names_cluster, selected_features, show=True):
     # Set list of the variables of which there are possible clusters
