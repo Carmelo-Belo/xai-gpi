@@ -909,15 +909,15 @@ def plot_shap_values(shap_values_mlp, basin, show=True):
     if basin == 'NA': # North Atlantic
         fig_xdim, fig_ydim, marker_size, font_size = 24, 17, 60, 24
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-0.8, -0.4, 0, 0.4, 0.8, 1.2])
+        x_axis = np.array([-1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2])
     elif basin == 'NWP': # Northwestern Pacific
         fig_xdim, fig_ydim, marker_size, font_size = 12, 5, 40, 12
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+        x_axis = np.array([-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
     elif basin == 'NEP': # Northeast Pacific
         fig_xdim, fig_ydim, marker_size, font_size = 12, 6, 40, 12
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+        x_axis = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     elif basin == 'NI': # North Indian
         fig_xdim, fig_ydim, marker_size, font_size = 14, 8, 50, 14
         fonts_size = [font_size - 2, font_size, font_size + 2]
@@ -925,11 +925,11 @@ def plot_shap_values(shap_values_mlp, basin, show=True):
     elif basin == 'SI': # South Indian
         fig_xdim, fig_ydim, marker_size, font_size = 14, 8, 50, 14
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
+        x_axis = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
     elif basin == 'SP': # South Pacific
         fig_xdim, fig_ydim, marker_size, font_size = 12, 5, 40, 12
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+        x_axis = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     # Set the figure and the grid for the subplots
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(2, 4, figure=fig)
@@ -1004,15 +1004,15 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     if basin == 'NA': # North Atlantic
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 24, 20, 140, 20, 28
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-0.8, -0.4, 0, 0.4, 0.8, 1.2])
+        x_axis = np.array([-1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2])
     elif basin == 'NWP': # Northwest Pacific
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 14, 5, 120, 12, 14
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+        x_axis = np.array([-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
     elif basin == 'NEP': # Northeast Pacific
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 14, 7, 120, 15, 17
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+        x_axis = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     elif basin == 'NI': # North Indian
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 20, 12, 120, 18, 22
         fonts_size = [font_size - 2, font_size, font_size + 2]
@@ -1020,11 +1020,11 @@ def plot_minmax_shap_values(shap_values_mlp, basin_years_couple, Y_pred, test_ye
     elif basin == 'SI': # South Indian
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 20, 12, 120, 18, 22
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
+        x_axis = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
     elif basin == 'SP': # South Pacific
         fig_xdim, fig_ydim, marker_size, marker_size_legend, font_size = 14, 7, 120, 15, 17
         fonts_size = [font_size - 2, font_size, font_size + 2]
-        x_axis = np.array([-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+        x_axis = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     # Set the figure and the gridspec for the subplots -> vertical layout
     fig = plt.figure(figsize=(fig_xdim, fig_ydim))
     gs = gridspec.GridSpec(1, 1, figure=fig)
