@@ -599,7 +599,7 @@ def runs_info(basin, run_name, project_dir, years):
         cluster_data = f'{basin}_{n_clusters}clusters'
         target_file = 'target_1980-2022_2.5x2.5.csv'
     # Set the paths to the files
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     output_dir = os.path.join(fs_dir, 'results', basin, run_name)
     cluster_data_dir = os.path.join(fs_dir, 'data', cluster_data)
     final_analysis_dir = os.path.join(output_dir, 'final_analysis')
@@ -736,7 +736,7 @@ def plot_annual_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_no
     # observations
     axY.plot(obs.index, obs, label='Observed (IBTrACS)', color='green', linewidth=3)
     # mlp predictions
-    axY.plot(pred.index, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=3)
+    axY.plot(pred.index, pred, label=f'XAI-GPI - R:{r_pred:.3f}', color='blue', linewidth=3)
     axY.plot(pred_noFS.index, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=3)
     # gpis
     axY.plot(engpi.index, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=3, linestyle='--')
@@ -764,7 +764,7 @@ def plot_monthly_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_n
     # observations
     ax.plot(xticks, obs, label='Observed (IBTrACS)', color='green', linewidth=6)
     # predictions
-    ax.plot(xticks, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=6)
+    ax.plot(xticks, pred, label=f'XAI-GPI - R:{r_pred:.3f}', color='blue', linewidth=6)
     ax.plot(xticks, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=6)
     # gpis
     ax.plot(xticks, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=6, linestyle='--')
@@ -790,7 +790,7 @@ def plot_seasonal_time_series(obs, pred, pred_noFS, engpi, ogpi, r_pred, r_pred_
     # observations
     axS.plot(obs.index, obs, label='Observed (IBTrACS)', color='green', linewidth=3)
     # mlp predictions
-    axS.plot(pred.index, pred, label=f'FS - R:{r_pred:.3f}', color='blue', linewidth=3)
+    axS.plot(pred.index, pred, label=f'XAI-GPI - R:{r_pred:.3f}', color='blue', linewidth=3)
     axS.plot(pred_noFS.index, pred_noFS, label=f'NoFS - R:{r_pred_noFS:.3f}', color='red', linewidth=3)
     # gpis
     axS.plot(engpi.index, engpi, label=f'ENGPI - R:{r_engpi:.3f}', color='orange', linewidth=3, linestyle='--')
