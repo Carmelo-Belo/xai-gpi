@@ -1,5 +1,5 @@
 
-# 🌪️ An eXplainable Artificial Intelligence Genesis Potentil Index (XAI-GPI) for Tropical Cyclone Genesis Detection
+# 🌪️ An eXplainable Artificial Intelligence Genesis Potential Index (XAI-GPI) for Tropical Cyclone Genesis Detection
 
 This repository contains the code, data processing pipeline, and results for the paper:
 
