@@ -1,17 +1,17 @@
 
-# 🌪️ Spatial Cluster-Optimized Feature Selection (SCO-FS) for Tropical Cyclone Genesis Detection
+# 🌪️ An eXplainable Artificial Intelligence Genesis Potentil Index (XAI-GPI) for Tropical Cyclone Genesis Detection
 
 This repository contains the code, data processing pipeline, and results for the paper:
 
-**"Improving Tropical Cyclone Genesis Detection with Feature Selection and Explainable Artificial Intelligence"**
+**"XAI-GPI: An Interpretable and Adaptive Machine Learning Genesis Index for Tropical Cyclones"**
 
 ---
 
 ## 📘 Overview
 
-Tropical cyclone genesis (TCG) remains one of the key challenges in climate and weather science. This project introduces a novel machine learning framework—**Spatial Cluster-Optimized Feature Selection (SCO-FS)**—to improve long-term detection and interpretation of cyclone formation using environmental variables and climate indices.
+Tropical cyclone genesis (TCG) remains one of the key challenges in climate and weather science. This project introduces a machine learning framework to build a novel Genesis Potential Index (GPI) to improve long-term detection and interpretation of cyclone formation using environmental variables and climate indices.
 
-SCO-FS is applied across six major tropical ocean basins and incorporates:
+XAI-GPI is tuned on six major tropical ocean basins and is developed following 4 major steps:
 - Spatial clustering to reduce dimensionality,
 - Evolutionary optimization for feature selection,
 - Neural networks for prediction,
@@ -64,8 +64,8 @@ Pull requests are welcome via the `dev` branch.
 1. **Clone the repository:**
 
 ```bash
-https://github.com/Carmelo-Belo/tcg_fsM.git
-cd tcg_fsM
+https://github.com/Carmelo-Belo/xai-gpi.git
+cd xai-gpi
 ```
 
 2. **Set up the virtual environment:**
@@ -82,7 +82,7 @@ conda activate tf_tcg
 
 ## 📊 Results Summary
 
-- SCO-FS models outperform state-of-the-art Genesis Potential Indices (GPIs) in capturing interannual TCG variability.
+- XAI-GPI models outperform state-of-the-art GPIs in capturing interannual TCG variability.
 - SHAP analysis reveals physically meaningful drivers, especially for **North Atlantic** and **Northeastern Pacific**.
 - Insights gained into year-to-year cyclone activity changes.
 
@@ -90,7 +90,7 @@ conda activate tf_tcg
 
 ## 📄 Related Paper
 
-> *Improving Tropical Cyclone Genesis Detection with Feature Selection and Explainable Artificial Intelligence*  
+> *XAI-GPI: An Interpretable and Adaptive Machine Learning Genesis Index for Tropical Cyclones*  
 > Authors: [Your Name(s)]  
 > [Journal Name, Year]  
 > [DOI or Preprint Link]
