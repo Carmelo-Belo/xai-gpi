@@ -36,7 +36,7 @@ def main(basin, n_clusters, clusters_type, n_vars, n_idxs, model_kind, n_folds, 
     # Set the paths to the files
     experiment_filename = f'1965-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     data_dir = os.path.join(fs_dir, 'data', cluster_data)
     predictors_path = os.path.join(data_dir, predictor_file)
     target_path = os.path.join(data_dir, target_file)

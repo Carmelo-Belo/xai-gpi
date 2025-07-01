@@ -12,8 +12,8 @@ def main(basin, n_clusters, res, train_yearI, train_yearF):
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     data_dir = os.path.join(project_dir, 'data')
-    fs_data_dir = os.path.join(project_dir, 'tcg_fsM', 'data')
-    clustering_dir = os.path.join(project_dir, 'tcg_fsM', 'clustering')
+    fs_data_dir = os.path.join(project_dir, 'xai-gpi', 'data')
+    clustering_dir = os.path.join(project_dir, 'xai-gpi', 'clustering')
     # Create output directory
     path_output = os.path.join(fs_data_dir, f'{basin}_{n_clusters}clusters_noTS')
     os.makedirs(path_output, exist_ok=True)

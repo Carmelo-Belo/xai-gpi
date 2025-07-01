@@ -277,7 +277,7 @@ def runs_info(basin, run_name):
     # Retrieve the clusters type of data from the results folder
     cluster_data = f'{basin}_{n_clusters}clusters_noTS'
     # Set the paths to the files
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     output_dir = os.path.join(fs_dir, 'results', basin, run_name)
     cluster_data_dir = os.path.join(fs_dir, 'data', cluster_data)
     final_analysis_dir = os.path.join(output_dir, 'final_analysis')

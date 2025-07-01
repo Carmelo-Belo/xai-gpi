@@ -8,7 +8,7 @@ import utils_results as ut
 def main(basin, n_vars, n_idxs):
     # Set directories
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     results_dir = os.path.join(fs_dir, 'results')
     basin_results_dir = os.path.join(results_dir, basin)
     # Set the acronyms names of the cluster variables and the indexes

@@ -89,7 +89,7 @@ def main(basin, n_clusters, n_vars, n_idxs, results_folder, model_kind, n_folds,
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     sol_filename = f'{model_kind}_' + experiment_filename
     predictor_file = 'predictors_' + experiment_filename
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     output_dir = os.path.join(fs_dir, 'results', basin, results_folder)
     sol_path = os.path.join(output_dir, sol_filename)
     # final_sol_path = os.path.join(output_dir, f'CRO_{sol_filename}')

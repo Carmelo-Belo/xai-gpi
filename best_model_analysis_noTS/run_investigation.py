@@ -10,7 +10,7 @@ from sklearn import preprocessing
 from sklearn.inspection import permutation_importance
 import shap
 import sys
-sys.path.insert(0, '/Users/huripari/Documents/PhD/TCs_Genesis/tcg_fsM')
+sys.path.insert(0, '/Users/huripari/Documents/PhD/TCs_Genesis/xai-gpi')
 import utils_results as ut
 
 def main(basin, run_name):
@@ -32,7 +32,7 @@ def main(basin, run_name):
     # Set the paths to the files
     experiment_filename = f'1980-2022_{n_clusters}clusters_{n_vars}vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     results_dir = os.path.join(fs_dir, 'results')
     output_dir = os.path.join(results_dir, basin, run_name)
     data_dir = os.path.join(fs_dir, 'data', cluster_data)

@@ -24,7 +24,7 @@ def main(basin, n_clusters, anomaly_clustering, remove_seasonality, n_vars, n_id
     # Set directories
     if anomaly_clustering == 'y' and remove_seasonality == 'y':
         raise ValueError('Cannot build a dataset with both anomaly clustering and deseasonalization, check utils_clustering.py')
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     if anomaly_clustering == 'y':
         data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_anomaly')
     elif remove_seasonality == 'y':

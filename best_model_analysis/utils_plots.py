@@ -599,7 +599,7 @@ def runs_info(basin, run_name, project_dir, years):
         cluster_data = f'{basin}_{n_clusters}clusters'
         target_file = 'target_1980-2022_2.5x2.5.csv'
     # Set the paths to the files
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     output_dir = os.path.join(fs_dir, 'results', basin, run_name)
     cluster_data_dir = os.path.join(fs_dir, 'data', cluster_data)
     final_analysis_dir = os.path.join(output_dir, 'final_analysis')

@@ -58,7 +58,7 @@ def main(basin, n_clusters, n_vars, n_idxs, output_folder, model_kind, train_yea
     project_dir = '/Users/huripari/Documents/PhD/TCs_Genesis'
     target_file = 'target_residual_1980-2022_2.5x2.5.csv'
     # Set directories
-    fs_dir = os.path.join(project_dir, 'tcg_fsM')
+    fs_dir = os.path.join(project_dir, 'xai-gpi')
     data_dir = os.path.join(fs_dir, 'data', f'{basin}_{n_clusters}clusters_noTS')
 
     # Set path and name of the predictor dataset and target dataset
