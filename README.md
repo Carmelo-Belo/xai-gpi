@@ -75,7 +75,7 @@ cd xai-gpi
 conda env create -f environment.yml
 
 # Acticate the conda environment
-conda activate tf_tcg
+conda activate xai-gpi
 ```
 
 ---
@@ -108,7 +108,7 @@ For collaboration or any queries regarding this project, please contact:
 
 ## 📜 License
 
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL-3.0 License – see the [LICENSE](LICENSE) file for details.
 
 ---
 

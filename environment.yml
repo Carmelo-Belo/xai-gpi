@@ -1,4 +1,4 @@
-name: tf_tcg
+name: xai-gpi
 channels:
   - conda-forge
   - defaults
