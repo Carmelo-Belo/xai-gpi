@@ -49,10 +49,10 @@ Pull requests are welcome via the `dev` branch.
 ├── clustering/                 # Clustering code
 ├── PyCROSL/                    # Code of the Probabilistic Coral Reef Optimization with Substrate Layers algorithm
 ├── results/                    # Final models files and information, tabular data containing info on all simulations performances and final selected features for the best models
-├── CRO_Spatio_FS_PI.py/        # Code to perform feature selection with Physicall-Informed Light Gradiend Boosting Machine
-├── CRO_Spatio_FS.py/           # Code to perform feature selection with Linear Regression or Light Gradiend Boosting Machine
-├── test_results_analysis/      # Code to run the *evalNN* training for a specific simulation
-├── requirements.txt            # Python dependencies
+├── CRO_Spatio_FS_PI.py         # Code to perform feature selection with Physicall-Informed Light Gradiend Boosting Machine
+├── CRO_Spatio_FS.py            # Code to perform feature selection with Linear Regression or Light Gradiend Boosting Machine
+├── test_results_analysis.py    # Code to run the *evalNN* training for a specific simulation
+├── environment.yml             # Python dependencies
 ├── LICENSE                     # License file
 └── README.md                   # This file
 ```
