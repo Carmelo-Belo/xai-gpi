@@ -1,0 +1,8 @@
+,50,60,70,75,80,90
+0,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3,abs_vo850_cluster3
+1,sst_cluster6,sst_cluster6,sst_cluster7,sst_cluster7,w_cluster3,w_cluster3
+2,sst_cluster7,sst_cluster7,w_cluster1,w_cluster1,w_cluster7,w_cluster7
+3,vo850_cluster5,w_cluster1,w_cluster3,w_cluster3,,
+4,w_cluster1,w_cluster3,w_cluster7,w_cluster7,,
+5,w_cluster3,w_cluster7,,,,
+6,w_cluster7,,,,,
