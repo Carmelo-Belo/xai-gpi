@@ -241,6 +241,8 @@ def n_clusters_violins(metric, final_model, results_dir, basins, basin_names, pr
         condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
                 | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
         track_df = track_df[condition]
+        # Filter the runs having the teleconnections in the pool of candidate variables
+        track_df = track_df[track_df.index.str.contains('nd9')]
         # Filter the DataFrame based on the predictors type and feature selection model
         if fs_model != 'all':
             track_df = track_df[track_df['model'] == fs_model]
@@ -292,7 +294,7 @@ def n_clusters_violins(metric, final_model, results_dir, basins, basin_names, pr
     plt.show()
     return ncl_violin_fig
 
-def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type):
+def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type, n_idxs):
     # Check predictors type to filter the simulations in the sim_performance files
     if predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
         raise ValueError('Predictors type not recognized. Choose between "original", "deseason" or "detrend"')
@@ -303,7 +305,7 @@ def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_cl
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
     elif predictors_type == 'detrend':
         cluster_data = f'{basin}_{n_clusters}clusters_detrend'
-    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_9idxs.csv'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
     predictors_path = os.path.join(fs_dir, 'data', cluster_data, predictor_file)
     predictors_df = pd.read_csv(predictors_path, index_col=0)
@@ -316,6 +318,8 @@ def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_cl
     condition = (track_df.index.str.contains('test1_') | track_df.index.str.contains('test2_') | track_df.index.str.contains('test3_') 
                 | track_df.index.str.contains('test4_') | track_df.index.str.contains('test5_'))
     track_df = track_df[condition]
+    # Filter the runs depending on the number of indexes
+    track_df = track_df[track_df.index.str.contains(f'nd{n_idxs}')]
     # Filter the DataFrame based on the number of clusters and predictors type
     track_df = track_df[track_df['n_clusters'] == n_clusters]
     if predictors_type == 'deseason':
@@ -382,7 +386,7 @@ def heatmap_var_selection_fs_models(results_dir, fs_dir, basin, basin_name, n_cl
     plt.title(f'{basin_name} - {n_clusters} clusters', fontsize=16, fontweight="bold")
     plt.show()
 
-def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type, fs_model):
+def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir, basin, basin_name, n_clusters, predictors_type, fs_model, n_idxs):
     # Check predictors type to filter the simulations in the sim_performance files
     if predictors_type != 'original' and predictors_type != 'deseason' and predictors_type != 'detrend':
         raise ValueError('Predictors type not recognized. Choose between "original", "deseason" or "detrend"')
@@ -396,7 +400,7 @@ def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir,
         cluster_data = f'{basin}_{n_clusters}clusters_deseason'
     elif predictors_type == 'detrend':
         cluster_data = f'{basin}_{n_clusters}clusters_detrend'
-    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_9idxs.csv'
+    experiment_filename = f'1980-2022_{n_clusters}clusters_8vars_{n_idxs}idxs.csv'
     predictor_file = 'predictors_' + experiment_filename
     predictors_path = os.path.join(fs_dir, 'data', cluster_data, predictor_file)
     predictors_df = pd.read_csv(predictors_path, index_col=0)
@@ -414,6 +418,8 @@ def heatmap_var_selection_models_tiers(metric, final_model, results_dir, fs_dir,
         track_df = track_df[track_df.index.str.contains('DT')]
     elif predictors_type == 'original':
         track_df = track_df[track_df.index.str.contains('_nc')]
+    # Filter the runs depending on the number of indexes
+    track_df = track_df[track_df.index.str.contains(f'nd{n_idxs}')]
     # Build the df containing the number of selection of each predictors
     performance_col = f'{metric}_{final_model}'
     sorted_df = track_df.sort_values(performance_col, ascending=True)
