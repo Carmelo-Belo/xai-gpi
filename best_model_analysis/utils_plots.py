@@ -646,10 +646,7 @@ def runs_info(basin, run_name, project_dir, years):
         dataset_opt = pd.concat([target_df.copy(), shifted_df], axis=1)
     else:
         # features selected >= sel_perc% of the time in the top20% best models
-        if n_idxs == 0:
-            sel_feat_perc_path = os.path.join(fs_dir, 'results', f'selected_features_best_models_{basin}_{nc_string}_0idxs.csv')
-        else:
-            sel_feat_perc_path = os.path.join(fs_dir, 'results', f'selected_features_best_models_{basin}_{nc_string}.csv')
+        sel_feat_perc_path = os.path.join(fs_dir, 'results', f'selected_features_best_models_{basin}_{nc_string}_{n_idxs}idxs.csv')
         df_sel_feat_perc = pd.read_csv(sel_feat_perc_path, index_col=0)
         sel_perc = run_name.split('_')[0].split('selfeat')[1]
         selected_features = df_sel_feat_perc[sel_perc].dropna().to_list()
