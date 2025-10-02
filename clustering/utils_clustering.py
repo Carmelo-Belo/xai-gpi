@@ -82,9 +82,6 @@ class cluster_model:
         if basin == 'NA':
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
             ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
-        elif basin == 'SP':
-            ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
-            ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree(central_longitude=180))
         else:
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=180))
             ax.set_extent([west, east, south, north], crs=ccrs.PlateCarree())
