@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Cycle through the different basins and number of clusters
-basins=("NA" "NEP" "NWP" "NI" "SI" "SP")
+# basins=("NA" "NEP" "NWP" "NI" "SI" "SP")
+basins=("SP")
 n_clusters=(5 6 7 8 9 10 11 12)
 
 for basin in "${basins[@]}"; do
