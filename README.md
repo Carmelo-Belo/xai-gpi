@@ -90,9 +90,9 @@ conda activate xai-gpi
 
 ## 📄 Related Paper
 
-> *XAI-GPI: An Interpretable and Adaptive Machine Learning Genesis Index for Tropical Cyclones*  
-> Authors: Filippo Dainelli, Jorge Pérez-Aracil, Guido Ascenso, Enrico Scoccimarro, Matteo Giuliani, Sancho Salcedo Sanz, Andrea Castelletti 
-> Journal of Geophysical Research: Machine Learning and Computation, 2025 
+> *XAI-GPI: An Interpretable and Adaptive Machine Learning Genesis Index for Tropical Cyclones*
+> Authors: Filippo Dainelli, Jorge Pérez-Aracil, Guido Ascenso, Enrico Scoccimarro, Matteo Giuliani, Sancho Salcedo Sanz, Andrea Castelletti \\
+> Journal of Geophysical Research: Machine Learning and Computation, 2025 \\
 > [10.1029/2025JH000865](https://doi.org/10.1029/2025JH000865)
 
 ---
